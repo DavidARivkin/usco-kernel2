@@ -11,7 +11,8 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "babelify": "^5.0.4"
+    "babelify": "^5.0.4",
+    "babel": "^4.7.12"
   },
   "scripts": {}
 }

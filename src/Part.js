@@ -7,7 +7,8 @@ import { generateUUID } from "./utils";
 class Part extends Entity{
   constructor( options ){
     const DEFAULTS = {
-      pId : undefined,//part id, common for all instances of a given part
+      puid : undefined,//part id, common for all instances of a given part
+      pname: undefined,//part CLASS name : common for all instances of a given part
       name: "",
       color : "#FFFFFFFF",
       pos: [0,0,0],
@@ -22,8 +23,11 @@ class Part extends Entity{
   
   
   clone(){
-    //return this.clone();
-    return new Part({name:this.name,color:this.color,pos:this.pos,rot:this.rot,sca:this.sca});
+    console.log("foo");
+    let clone = new Part({name:this.name,color:this.color,pos:this.pos,rot:this.rot,sca:this.sca});
+    clone.puid = this.puid;
+    
+    return clone;
   }
   
   /*create a new , named Part sub class*/

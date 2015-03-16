@@ -70,7 +70,6 @@ class Bom {
     //FIXME can't we use the length of instances ? or should we allow for human settable variation
     bomEntry.qty -= 1;
   }
-  
  
   /*
     Register an IMPLEMENTATIOn in the bom: 
