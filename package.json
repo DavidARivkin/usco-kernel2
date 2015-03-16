@@ -1,0 +1,17 @@
+{
+  "name": "usco-kernel2",
+  "version": "0.0.1",
+  "license": "AGPL3",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/kaosat-dev/CoffeeSCad-kernel.git"
+  },
+  "directories": {
+    "lib": "./lib"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "babelify": "^5.0.4"
+  },
+  "scripts": {}
+}
