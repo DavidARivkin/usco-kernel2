@@ -39,13 +39,21 @@ class Assembly extends ANode{
     super();
   }
   
-  getNodeParent( node ){
-    if( !node._parent ) return undefined;
-    return node._parent;
-    //TODO: work different implementation that does not change data structre of injected items
-    /*this.children.map( function( childNode ) {
-    
-    });*/
+  getParentNode( node ){
+    //if( !node._parent ) return undefined;
+    //return node._parent;
+    //TODO: do actual implementation for multiple levels
+    var parent = undefined;
+    for(var i=0;i<this.children.length;i++)
+    {
+      var child = this.children[ i ];
+      if( node === child )
+      {
+        parent = this;
+        break;
+      }
+    }
+    return parent;
   }
  
 }
