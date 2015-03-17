@@ -21,12 +21,10 @@ class Part extends Entity{
     Object.assign( this, options );
   }
   
-  
   clone(){
-    console.log("foo");
     let clone = new Part({name:this.name,color:this.color,pos:this.pos,rot:this.rot,sca:this.sca});
-    clone.puid = this.puid;
-    
+    clone.puid  = this.puid;
+    clone.pname = this.pname;
     return clone;
   }
   
@@ -38,10 +36,11 @@ class Part extends Entity{
     
   }
 }
-//"hurrah" for now class attributes
+//"hurrah" for no class attributes...
+Part.prototype.test = "foobar";
 //assign id for the CLASS itself, common for all instances
 //TODO: perhaps subclassing makes more sense ? ie create a new custom class
-Part.id = generateUUID(); 
+Part.prototype.id = generateUUID(); 
 
 
 

@@ -103,9 +103,6 @@ class Bom {
       }
     }*/
     let bomEntry = this.getPartByName( partName );
-    if(!bomEntry){
-    
-    }
     
     if(!bomEntry){
       partIndex += 1; 
@@ -124,6 +121,7 @@ class Bom {
        };
       this.bom.push( bomEntry );
     }
+    
     console.log("BOM",this.bom);
     return partIndex;
   }

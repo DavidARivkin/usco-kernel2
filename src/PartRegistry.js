@@ -77,19 +77,16 @@ class PartRegistry{
     if( ! this._partMeshTemplates[ partId ] ){
       this.addTemplateMeshForPart( mesh.clone(), partId );
     }
-    
-    //FIXME: unsure, this is both too three.js specific, and a bit weird to inject data like that
-    mesh.userData.part = part;
+
     return part;
   }
   
   /* register a part's (parametric) source
   */
   registerPartSource( part, source, options ){
-  
-  
   }
   
+  /*FIXME: not sure this is needed */
   registerPart( part ){
     if( !part ) throw new Error("no part specified, cannot register part");
     this.parts.push( part );

@@ -16,6 +16,21 @@ class ANode{
     }
   }
   
+  isNodePresent( node ){
+    //TODO: refactor: very ugly
+    for(var i=0;i<this.children.length;i++)
+    {
+      var child = this.children[ i ];
+      if( node === child )
+      {
+        return true;
+      }
+      var res = child.isNodePresent( node );
+      if(res === true) return res;
+    }
+    return false;
+  }
+  
 }
 
 //experimental assembly
@@ -32,6 +47,7 @@ class Assembly extends ANode{
     
     });*/
   }
+ 
 }
 
 export { Assembly }
