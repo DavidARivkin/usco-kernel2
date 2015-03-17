@@ -2,7 +2,7 @@ import { Part } from "./Part";
 import { PartRegistry } from "./PartRegistry";
 import { Bom } from "./bom/Bom";
 import { Assembly } from "./Assembly";
-import { Design } from "./Design";
+import { Design } from "./design/Design";
 
 //import * from "./utils" as utils;
 
@@ -13,19 +13,19 @@ class Kernel{
   constructor(){
     this.partRegistry = new PartRegistry();
     
-    this.assemblies = [];
-    this.activeAssembly = new Assembly();
-    this.assemblies.push( this.activeAssembly );
+    //not sure at ALL
+    this.activeDesign = new Design();
+    
+    //essential
+    this.activeAssembly = this.activeDesign.activeAssembly;
     
     //this should be PER assembly
     this.entitiesToMeshInstancesMap = new WeakMap();
     this.meshInstancesToEntitiesMap = new WeakMap();//reverse map
     
     //not sure
-    this.activeDesign = new Design();
-    
-    //not sure
     this.bom = new Bom();
+    
   }
   
   //should be part class ? 
@@ -60,8 +60,6 @@ class Kernel{
     //this.assemblies.add( partInst );
     //this.bom.registerInstance();
   }  
-  
-  
   
   /* register the mesh <-> entity  relationship
   ie : what is visual/mesh for a given mesh and vice versa:
@@ -118,6 +116,13 @@ class Kernel{
     return this.meshInstancesToEntitiesMap.get( mesh );
   }
   
+  //FIXME after this point, very doubtfull to be kept in this form & shape
+  saveDesign( design ){
+    let design = this.activeDesign;
+    console.log("saving design", design);
+    let strForm = JSON.stringify( design );
+    localStorage.setItem("jam!-data-design", strForm );
+  }
 }
 
 //export { Kernel }
