@@ -37,7 +37,7 @@ class Design{
   //configure the fields to serialize
   toJSON() {
     console.log("calling toJSON method");
-    let extraFields = ["activeAssembly"];
+    let extraFields = [];//["activeAssembly"];
     let keys = Object.keys( this.DEFAULTS );
     
     keys = keys.concat( extraFields );

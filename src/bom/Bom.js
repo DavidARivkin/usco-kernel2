@@ -17,6 +17,9 @@ class Bom {
   constructor(){
     //TODO: ermmm bom within bom?
     this.bom = [];
+    
+    //mappings between part types and their bom entries: ie one bom entry per class + params
+    this.partTypeToBomEntryMap = new WeakMap();
   }
   
   //basic api
