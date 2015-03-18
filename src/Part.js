@@ -7,25 +7,39 @@ import { generateUUID } from "./utils";
 class Part extends Entity{
   constructor( options ){
     const DEFAULTS = {
-      puid : undefined,//part id, common for all instances of a given part
-      pname: undefined,//part CLASS name : common for all instances of a given part
+      typeUid : undefined,//part id, common for all instances of a given part
+      typeName: undefined,//part CLASS name : common for all instances of a given part
       name: "",
       color : "#FFFFFFFF",
       pos: [0,0,0],
       rot: [0,0,0],
       sca: [1,1,1]
     }
-    
+    //this.DEFAULTS = DEFAULTS;
     let options = Object.assign({}, DEFAULTS, options); 
     super( options );
+    
     Object.assign( this, options );
   }
   
   clone(){
     let clone = new Part({name:this.name,color:this.color,pos:this.pos,rot:this.rot,sca:this.sca});
+    clone.typeUid  = this.typeUid;
+    clone.typeName = this.typeName;
+    
+    return clone;
+    
+    /*let keys = Object.keys( this.DEFAULTS );
+    let fieldMap = {};
+    let self = this;
+    keys.map( function( key ){
+      fieldMap[ key ] = self[ key ];
+    });
+    
+    let clone = Object.create( this.__proto__, fieldMap );//prototype or __proto__ ??
     clone.puid  = this.puid;
     clone.pname = this.pname;
-    return clone;
+    return clone;*/
   }
   
   /*create a new , named Part sub class*/

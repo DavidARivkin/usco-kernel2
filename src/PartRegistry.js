@@ -8,13 +8,16 @@ class PartRegistry{
   constructor(){
      //container for all already loaded meshes
     //TODO : should this be a facade ?
-    this.partKlasses = {};
-    this.parts = [];
+    this.parts = {};
     //TODO: is this not redundant with assets, but stored by part id ???
     this._partMeshTemplates = {}; //the original base mesh: ONE PER PART
     this._partMeshWaiters  = {};//internal : when
     this.partMeshInstances = {};
     
+    //FIXME: temporary , until I find better
+    this._meshNameToPartId = {};
+    
+    this.partTypes = {};
   }
   
   /* 
@@ -23,27 +26,27 @@ class PartRegistry{
     
     FIXME: is this no close to defining a class , of which all instances are...instances?
   */
-  addTemplateMeshForPart( mesh, partId ){
-    this._partMeshTemplates[ partId ] = mesh;
+  addTemplateMeshForPart( mesh, typeUid ){
+    this._partMeshTemplates[ typeUid ] = mesh;
     
     //anybody waiting for that mesh yet ?
-    if( this._partMeshWaiters[ partId ] ){
-      console.log("resolving mesh of ", partId );
-      this._partMeshWaiters[ partId ].resolve( mesh );
+    if( this._partMeshWaiters[ typeUid ] ){
+      console.log("resolving mesh of ", typeUid );
+      this._partMeshWaiters[ typeUid ].resolve( mesh );
     }
   }
   
   
   /* wrapper abstracting whether one needs to wait for the part's mesh or not
   */
-  *getEntityMesh( partId ){
-    if( ! this._partMeshTemplates[ partId ] ) return;
-    if( ! this._partMeshWaiters[ partId ] ) {
-      this._partMeshWaiters[ partId ] = Q.defer();
+  *getEntityMesh( typeUid ){
+    if( ! this._partMeshTemplates[ typeUid ] ) return;
+    if( ! this._partMeshWaiters[ typeUid ] ) {
+      this._partMeshWaiters[ typeUid ] = Q.defer();
     }
     
-    //partMeshesToWaitFor.push( self.partWaiters[ partId ].promise );
-    var mesh = yield this._partMeshWaiters[ partId ];
+    //partMeshesToWaitFor.push( self.partWaiters[ typeUid ].promise );
+    var mesh = yield this._partMeshWaiters[ typeUid ];
     return mesh
   }
   
@@ -52,30 +55,52 @@ class PartRegistry{
   */
   registerPartMesh( part, mesh, options ){
     console.log("registering part mesh");
-    var partId = undefined;
-    //no partId was given, it means we have a mesh with no part (yet !)
-    if( !part ) {
-      var part = new Part( options );
+    
+    //the options are actually for the MESH 
+    //we get the name of the mesh (needed)
+    let meshName = options.name || "";
+    let cName = meshName.substr(0, meshName.lastIndexOf('.')); 
+    cName = cName.replace("_","");
+    //we do not want the mesh instance to have the name of the mesh file
+    options.name = cName;
+    
+    let typeUid = this._meshNameToPartId[ meshName ];
+    
+    //no typeUid was given, it means we have a mesh with no part (yet !)
+    if( !typeUid ) {
+      
       //FIXME: instead of PART , it could be a custom class created on the fly
-      //this.makeNamedPartKlass( part, options.name || "testKlass" );
-      part.pname = options.name || undefined;
-      part.puid  = generateUUID(); //FIXME implement
-      partId     = part.puid; //FIXME implement
-      //TODO , should we be making a new part CLASS at this stage ?
+      let klass = Part;
+      
+      //create ...
+      let dynKlass = this.makeNamedPartKlass( cName );
+      //& register class
+      this.partTypes[ typeUid ] = dynKlass;
+      
+      var part = new klass( options );//new Part( options );
+      
+      part.typeName = cName;//name of the part CLASS
+      part.typeUid  = generateUUID(); //FIXME implement
+      typeUid        = part.typeUid; //FIXME implement
+      this._meshNameToPartId[ meshName ] = typeUid;
+      this.parts[ typeUid ] = part;
+      
     }else{
-      part = this.parts[ partId ];
+      part = this.parts[ typeUid ].clone();
+      //totally absurd are we dealing with classes, instances or what???
     } 
     
-    if( !this.partMeshInstances[ partId ] )
+    
+    if( !this.partMeshInstances[ typeUid ] )
     {
-      this.partMeshInstances[ partId ] = [];
+      this.partMeshInstances[ typeUid ] = [];
     }
-    this.partMeshInstances[ partId ].push( mesh );
+    this.partMeshInstances[ typeUid ].push( mesh );
     
     //do we have ANY meshes for this part
     //if not, add it to templates
-    if( ! this._partMeshTemplates[ partId ] ){
-      this.addTemplateMeshForPart( mesh.clone(), partId );
+    if( ! this._partMeshTemplates[ typeUid ] ){
+      this.addTemplateMeshForPart( mesh.clone(), typeUid );
     }
 
     return part;
@@ -92,31 +117,39 @@ class PartRegistry{
     this.parts.push( part );
   }
   
-  /*
-  registerPartKlass( partKlass ){
   
-  }*/
+  registerPartType( partKlass=undefined, typeName ){
+  
+  }
   
   /*experimental:
    generate a named subclass of part, based on the name of Part CLASS
-   */
-  makeNamedPartKlass( part, name){
+  */
+  makeNamedPartKlass( klassName ){
     console.log("making named class");
-    let subKlass = {
-        constructor( options ){
-          super.constructor( options );
-        }
-    };
     
-    //FIXME : horrible
-    var expSubClassStr = `class ${name} extends Part{
+    //FIXME : won't work, as class is not support in browsers , where the eval() is taking
+    //place
+    /*let expSubClassStr = `class ${klassName} extends Part{
         constructor( options ){
           super( options );
         }
-    }`;
-    console.log("part pre change", part);
+    }`;*/
+    //SO we use the "old" es5 syntax
+    
+    let expSubClassStr = `var ${klassName} = function(options){
+        Part.call( this, options );
+      }
+      ${klassName}.prototype = Object.create( Part.prototype );
+      ${klassName}.prototype.constructor = ${klassName};  
+    `;
+    console.log("expSubClassStr",expSubClassStr);
+    let klass = eval( expSubClassStr );
+    /*console.log("part pre change", part);
     part.__proto__ = testKlass;
-    console.log("part post change", part);
+    console.log("part post change", part);*/
+    console.log("klass",klass);
+    return klass;
   }
 }
 

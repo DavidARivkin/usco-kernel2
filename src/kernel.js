@@ -51,7 +51,7 @@ class Kernel{
     get new instance of mesh for an entity that does not have a mesh YET
   */
   getPartMeshInstance( entity ){
-    let mesh = this.partRegistry._partMeshTemplates[ entity.puid ].clone();
+    let mesh = this.partRegistry._partMeshTemplates[ entity.typeUid ].clone();
     this.registerEntityMeshRel( entity, mesh );
     return mesh;
   }
@@ -123,6 +123,20 @@ class Kernel{
     let strForm = JSON.stringify( design );
     localStorage.setItem("jam!-data-design", strForm );
   }
+  
+  //returns a fake/ testing design
+  //TODO: impletement, use at least promises, or better generators/ yield
+  loadDesign( uri ){
+    let design = new Design({name:"GroovyDesign",title:"Groovy design", description:"a classy design"});
+    return design;
+  }
+  
+  saveActiveAssemblyState( ){
+    let strForm = JSON.stringify( this.activeDesign.activeAssembly );
+    localStorage.setItem("jam!-data-assembly", strForm );
+  }
+  
+  
 }
 
 //export { Kernel }
