@@ -29,8 +29,8 @@ class Kernel{
   }
   
   //should be part class ? 
-  registerPart( part=undefined, source=undefined, mesh=undefined, options={} ){
-    var part = this.partRegistry.registerPartMesh( part, mesh, options );
+  registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
+    var part = this.partRegistry.registerPartTypeMesh( part, mesh, options );
     
     this.activeAssembly.add( part );
     console.log("assembly", this.activeAssembly );
@@ -73,12 +73,19 @@ class Kernel{
   }
   
   duplicateEntity( entity ){
+    console.log("duplicating entity");
     var dupe = entity.clone();
+    
+    //FIXME : needs to work with all entity types
+    this.partRegistry.registerPartInstance( entity );
+    dupe.name = dupe.typeName + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1);
+    
     if( entity instanceof Part )
     {
       this.activeAssembly.add( dupe );
       //TODO: how to deal with auto offset to prevent overlaps
     }
+    
     return dupe
   }
   
@@ -134,6 +141,11 @@ class Kernel{
   saveActiveAssemblyState( ){
     let strForm = JSON.stringify( this.activeDesign.activeAssembly );
     localStorage.setItem("jam!-data-assembly", strForm );
+  }
+  
+  loadActiveAssemblyState(){
+    let strAssembly = localStorage.getItem( "jam!-data-assembly" );
+    this.activeDesign.activeAssembly = new Assembly( strAssembly );
   }
   
   
