@@ -18,6 +18,7 @@ class PartRegistry{
     this._meshNameToPartId = {};
     
     this.partTypes = {};
+    this.partTypeInstances = {};
   }
   
   /* 
@@ -26,20 +27,23 @@ class PartRegistry{
     
     FIXME: is this no close to defining a class , of which all instances are...instances?
   */
-  addTemplateMeshForPart( mesh, typeUid ){
-    this._partMeshTemplates[ typeUid ] = mesh;
-    
-    //anybody waiting for that mesh yet ?
-    if( this._partMeshWaiters[ typeUid ] ){
-      console.log("resolving mesh of ", typeUid );
-      this._partMeshWaiters[ typeUid ].resolve( mesh );
+  addTemplateMeshForPartType( mesh, typeUid ){
+    if( ! this._partMeshTemplates[ typeUid ] ){
+      
+      this._partMeshTemplates[ typeUid ] = mesh;
+      
+      //anybody waiting for that mesh yet ?
+      if( this._partMeshWaiters[ typeUid ] ){
+        console.log("resolving mesh of ", typeUid );
+        this._partMeshWaiters[ typeUid ].resolve( mesh );
+      }
     }
   }
   
   
   /* wrapper abstracting whether one needs to wait for the part's mesh or not
   */
-  *getEntityMesh( typeUid ){
+  *getPartTypeMesh( typeUid, original=false ){
     if( ! this._partMeshTemplates[ typeUid ] ) return;
     if( ! this._partMeshWaiters[ typeUid ] ) {
       this._partMeshWaiters[ typeUid ] = Q.defer();
@@ -47,13 +51,19 @@ class PartRegistry{
     
     //partMeshesToWaitFor.push( self.partWaiters[ typeUid ].promise );
     var mesh = yield this._partMeshWaiters[ typeUid ];
+    //we have not been asked for the original mesh, get a copy instance
+    if( !original ){
+      mesh = mesh.clone();
+    }
     return mesh
   }
+  
+  
   
   /* register a instance's 3d mesh
   this needs to be done PER INSTANCE not just once per part
   */
-  registerPartMesh( part, mesh, options ){
+  registerPartTypeMesh( part, mesh, options ){
     console.log("registering part mesh");
     
     //the options are actually for the MESH 
@@ -82,6 +92,7 @@ class PartRegistry{
       part.typeName = cName;//name of the part CLASS
       part.typeUid  = generateUUID(); //FIXME implement
       typeUid        = part.typeUid; //FIXME implement
+      
       this._meshNameToPartId[ meshName ] = typeUid;
       this.parts[ typeUid ] = part;
       
@@ -90,36 +101,47 @@ class PartRegistry{
       //totally absurd are we dealing with classes, instances or what???
     } 
     
-    
+    //FIXME remove
     if( !this.partMeshInstances[ typeUid ] )
     {
       this.partMeshInstances[ typeUid ] = [];
     }
     this.partMeshInstances[ typeUid ].push( mesh );
     
-    //do we have ANY meshes for this part
+    //Register instance
+    this.registerPartInstance( part );
+    
+    //not sure
+    part.name = part.typeName + "" + (this.partTypeInstances[ typeUid ].length - 1);
+    
+    //do we have ANY meshes for this part ?
     //if not, add it to templates
-    if( ! this._partMeshTemplates[ typeUid ] ){
-      this.addTemplateMeshForPart( mesh.clone(), typeUid );
-    }
+    this.addTemplateMeshForPartType( mesh.clone(), typeUid );
 
     return part;
   }
   
-  /* register a part's (parametric) source
+  /* register a part type
   */
-  registerPartSource( part, source, options ){
+  registerPartType( partKlass, typeName ){
+      if( !partKlass ) throw new Error("no part type specified, cannot register part type");
   }
   
-  /*FIXME: not sure this is needed */
-  registerPart( part ){
-    if( !part ) throw new Error("no part specified, cannot register part");
-    this.parts.push( part );
+  /* register a part type's (parametric) source
+  */
+  registerPartTypeSource( part, source, options ){
   }
   
-  
-  registerPartType( partKlass=undefined, typeName ){
-  
+  /* register a part instance */
+  registerPartInstance( partInstance ){
+    if( !partInstance ) throw new Error("no part specified, cannot register part");
+    //this.parts.push( part );
+    let typeUid = partInstance.typeUid;
+    if( !this.partTypeInstances[ typeUid ] )
+    {
+      this.partTypeInstances[ typeUid ] = [];
+    }
+    this.partTypeInstances[ typeUid ].push( partInstance );
   }
   
   /*experimental:
