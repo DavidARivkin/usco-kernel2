@@ -4,11 +4,10 @@ import { Bom } from "./bom/Bom";
 import { Assembly } from "./Assembly";
 import { Design } from "./design/Design";
 
+import { TestApi } from "./testApi/testApi"
+
 //import * from "./utils" as utils;
 
-/**
-TODO: should be singleton
-**/
 class Kernel{
   constructor(){
     this.partRegistry = new PartRegistry();
@@ -26,6 +25,8 @@ class Kernel{
     //not sure
     this.bom = new Bom();
     
+    //not sure
+    this.dataApi = new TestApi();
   }
   
   //should be part class ? 
@@ -133,9 +134,20 @@ class Kernel{
   
   //returns a fake/ testing design
   //TODO: impletement, use at least promises, or better generators/ yield
-  loadDesign( uri ){
-    let design = new Design({name:"GroovyDesign",title:"Groovy design", description:"a classy design"});
-    return design;
+  loadDesign( uri, options, callback ){
+    console.log("loading design from", uri);
+    //FIXME: horrible
+    let designName = uri.split("/").pop();
+    console.log("designName", designName);
+    let design = new Design({name:designName,title:"Groovy design", description:"a classy design"});
+    //FIXME horrible
+    this.activeDesign.name = designName;
+    
+    //TODO: should look more like this
+    //let design = yield this.dataApi.loadDesign( uri , options ); 
+    
+    this.loadDocsOfDesign( );
+    return this.activeDesign;
   }
   
   saveActiveAssemblyState( ){
@@ -148,6 +160,78 @@ class Kernel{
     this.activeDesign.activeAssembly = new Assembly( strAssembly );
   }
   
+  /* TODO: how about reusing the asset manager????
+    also : only load data for files actually use in assembly
+  */
+  loadDocsOfDesign(  ){
+    let apiUri = "http://localhost:3080/api/";
+    let uri = `${apiUri}designs/${this.activeDesign.name}/documents`;
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', uri, true);
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        console.log("fetched ok");
+        console.log(this.responseText);
+        
+      } else {
+        console.error('An error occurred!');
+      }
+    };
+    xhr.send();
+  }
+  
+  //FIXME: move this to asset manager ??
+  uploadDoc( data, fileName, mimeType, uri ){
+  
+    let apiUri = "http://localhost:3080/api/";
+    let uri = `${apiUri}designs/${this.activeDesign.name}/documents`;
+    var formData = new FormData();
+    let name = "test";
+    //let fileName = "foo.stl";
+    
+    formData.append(name, data, fileName);
+    // Files & blobs 
+    //formData.append(name, file, filename);
+    // Strings
+    //formData.append(name, value); 
+   
+    var xhr = new XMLHttpRequest();
+    // Open the connection.
+    xhr.open('POST', uri, true);
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        // File(s) uploaded.
+        console.log("uploaded ok");
+      } else {
+        console.error('An error occurred!');
+      }
+    };
+    xhr.upload.addEventListener("progress", function(e) {
+        if (e.lengthComputable) {
+          var percentage = Math.round((e.loaded * 100) / e.total);
+          console.log("upload in progress", percentage);
+      }
+
+    }, false);
+    
+    xhr.send(formData);
+    
+    /*var reader = new FileReader();  
+    
+     this.xhr.upload.addEventListener("progress", function(e) {
+        if (e.lengthComputable) {
+          var percentage = Math.round((e.loaded * 100) / e.total);
+        }
+      }, false);
+    xhr.open("POST", "http://demos.hacks.mozilla.org/paul/demos/resources/webservices/devnull.php");
+    xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
+    reader.onload = function(evt) {
+      xhr.sendAsBinary(evt.target.result);
+    };
+    reader.readAsBinaryString(file);*/
+    
+  }
   
 }
 
