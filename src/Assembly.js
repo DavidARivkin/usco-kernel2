@@ -35,8 +35,13 @@ class ANode{
 
 //experimental assembly
 class Assembly extends ANode{
-  constructor(){
+  constructor( options ){
+    const DEFAULTS = {
+    
+    }
     super();
+    let options = Object.assign({}, DEFAULTS, options); 
+    Object.assign( this, options );
   }
   
   getParentNode( node ){
