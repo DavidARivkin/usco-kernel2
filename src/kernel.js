@@ -6,7 +6,7 @@ import { Design } from "./design/Design";
 
 import { TestApi } from "./testApi/testApi"
 
-//import * from "./utils" as utils;
+import { generateUUID, hashCode, nameCleanup } from "./utils";
 
 class Kernel{
   constructor(){
@@ -34,14 +34,6 @@ class Kernel{
   registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
     var part = this.partRegistry.registerPartTypeMesh( part, mesh, options );
     
-    this.activeAssembly.add( part );
-    console.log("assembly", this.activeAssembly );
-    
-    //register new instance in the Bill of materials
-    this.bom.registerPart( part );
-    //self._registerInstanceInBom( mesh.userData.part.bomId, mesh );
-    //part.bomId = self._registerImplementationInFakeBOM( resource.uri, partName );
-    
     //FIXME: unsure, this is both too three.js specific, and a bit weird to 
     //inject data like that, mostly as we have mappings from entity to mesh already
     mesh.userData.entity = part;
@@ -59,8 +51,11 @@ class Kernel{
   }
   
   registerPartInstance( partInst ){
-    //this.assemblies.add( partInst );
-    //this.bom.registerInstance();
+    this.activeAssembly.add( partInst );
+    //register new instance in the Bill of materials
+    //this.bom.registerPart( partInst );
+    //self._registerInstanceInBom( mesh.userData.part.bomId, mesh );
+    //part.bomId = self._registerImplementationInFakeBOM( resource.uri, partName );
   }  
   
   /* register the mesh <-> entity  relationship
@@ -147,13 +142,37 @@ class Kernel{
     //TODO: should look more like this
     //let design = yield this.dataApi.loadDesign( uri , options ); 
     
-    this.loadActiveAssemblyState( );
+    //this.loadActiveAssemblyState( );
     //now get back mapping of fileName to uid
     let meshNameToPartTypeUId = localStorage.getItem("jam!-meshNameToPartTypeUId" );
     if( meshNameToPartTypeUId) {
       meshNameToPartTypeUId = JSON.parse( meshNameToPartTypeUId );
       this.partRegistry._meshNameToPartTypeUId = meshNameToPartTypeUId;
+      
+      //FIXME: horrible hack, see code in part registry
+      for( key in meshNameToPartTypeUId)
+      {
+        let klass = Part;
+        let cName = nameCleanup(key);
+        let options = { name:cName };
+        let part = new klass( options );//new Part( options );
+        let typeUid = meshNameToPartTypeUId[key];
+        
+        part.typeName = cName;//name of the part CLASS
+        part.typeUid  = typeUid;
+        this.partRegistry.parts[ typeUid ] = part;
+        
+        this.partRegistry.registerPartInstance( part );
+        //not sure
+        part.name = part.typeName + "" + (this.partRegistry.partTypeInstances[ typeUid ].length - 1);
+        
+        //do we have ANY meshes for this part ?
+        //if not, add it to templates
+      }
     }
+    
+    
+    
     //now that we have the list of files that we need, load those
     this.loadDocsOfDesign( callback );
     
@@ -167,7 +186,6 @@ class Kernel{
     //localStorage.setItem("jam!-data-assembly", strForm );
     
     let strForm = JSON.stringify( {assembly:this.activeDesign.activeAssembly} );
-    
     
     let apiUri = "http://localhost:3080/api/";
     let uri = `${apiUri}designs/${this.activeDesign.name}/assemblies/0`;
@@ -196,7 +214,7 @@ class Kernel{
     
   }
   
-  loadActiveAssemblyState(){
+  loadActiveAssemblyState( callback ){
     //local storage
     //let strAssembly = localStorage.getItem( "jam!-data-assembly" );
     //this.activeDesign.activeAssembly = new Assembly( strAssembly );
@@ -214,6 +232,7 @@ class Kernel{
         let strAssembly = this.responseText;
         strAssembly = JSON.parse( strAssembly );
         self.activeDesign.activeAssembly = new Assembly( strAssembly );
+        if(callback) callback();
         
       } else {
         console.error('An error occurred!');
