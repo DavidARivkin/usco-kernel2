@@ -51,11 +51,9 @@ class Part extends Entity{
   }
 }
 //"hurrah" for no class attributes...
-Part.prototype.test = "foobar";
 //assign id for the CLASS itself, common for all instances
 //TODO: perhaps subclassing makes more sense ? ie create a new custom class
 Part.prototype.id = generateUUID(); 
-
 
 
 export { Part };

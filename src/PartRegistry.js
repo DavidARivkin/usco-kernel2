@@ -15,7 +15,7 @@ class PartRegistry{
     this.partMeshInstances = {};
     
     //FIXME: temporary , until I find better
-    this._meshNameToPartId = {};
+    this._meshNameToPartTypeUId = {};
     
     this.partTypes = {};
     this.partTypeInstances = {};
@@ -66,6 +66,9 @@ class PartRegistry{
   registerPartTypeMesh( part, mesh, options ){
     console.log("registering part mesh");
     
+    /*we also check if the implementation (the stl, amf etc) file is already registered 
+    as an implementation of some part type*/
+    
     //the options are actually for the MESH 
     //we get the name of the mesh (needed)
     let meshName = options.name || "";
@@ -74,7 +77,7 @@ class PartRegistry{
     //we do not want the mesh instance to have the name of the mesh file
     options.name = cName;
     
-    let typeUid = this._meshNameToPartId[ meshName ];
+    let typeUid = this._meshNameToPartTypeUId[ meshName ];
     
     //no typeUid was given, it means we have a mesh with no part (yet !)
     if( !typeUid ) {
@@ -83,9 +86,9 @@ class PartRegistry{
       let klass = Part;
       
       //create ...
-      let dynKlass = this.makeNamedPartKlass( cName );
+      //let dynKlass = this.makeNamedPartKlass( cName );
       //& register class
-      this.partTypes[ typeUid ] = dynKlass;
+      //this.partTypes[ typeUid ] = dynKlass;
       
       var part = new klass( options );//new Part( options );
       
@@ -93,7 +96,7 @@ class PartRegistry{
       part.typeUid  = generateUUID(); //FIXME implement
       typeUid        = part.typeUid; //FIXME implement
       
-      this._meshNameToPartId[ meshName ] = typeUid;
+      this._meshNameToPartTypeUId[ meshName ] = typeUid;
       this.parts[ typeUid ] = part;
       
     }else{
