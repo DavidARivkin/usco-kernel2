@@ -1,4 +1,4 @@
-import { generateUUID } from "./utils";
+import { generateUUID, hashCode, nameCleanup } from "./utils";
 import { Part } from "./Part";
 
 //FIXME: how much of an overlap with bom ?
@@ -18,6 +18,7 @@ class PartRegistry{
     this._meshNameToPartTypeUId = {};
     
     this.partTypes = {};
+    this.partTypesByName = {};
     this.partTypeInstances = {};
   }
   
@@ -63,7 +64,7 @@ class PartRegistry{
   /* register a instance's 3d mesh
   this needs to be done PER INSTANCE not just once per part
   */
-  registerPartTypeMesh( part, mesh, options ){
+  registerPartTypeMesh( partKlass, mesh, options ){
     console.log("registering part mesh");
     
     /*we also check if the implementation (the stl, amf etc) file is already registered 
@@ -72,8 +73,7 @@ class PartRegistry{
     //the options are actually for the MESH 
     //we get the name of the mesh (needed)
     let meshName = options.name || "";
-    let cName = meshName.substr(0, meshName.lastIndexOf('.')); 
-    cName = cName.replace("_","");
+    let cName = nameCleanup( meshName ); 
     //we do not want the mesh instance to have the name of the mesh file
     options.name = cName;
     
@@ -81,20 +81,19 @@ class PartRegistry{
     
     //no typeUid was given, it means we have a mesh with no part (yet !)
     if( !typeUid ) {
-      
       //FIXME: instead of PART , it could be a custom class created on the fly
       let klass = Part;
-      
       //create ...
-      //let dynKlass = this.makeNamedPartKlass( cName );
+      let dynKlass = this.makeNamedPartKlass( cName );
       //& register class
-      //this.partTypes[ typeUid ] = dynKlass;
+      this.partTypes[ typeUid ]     = dynKlass;
+      this.partTypesByName[ cName ] = dynKlass;
       
       var part = new klass( options );//new Part( options );
       
       part.typeName = cName;//name of the part CLASS
       part.typeUid  = generateUUID(); //FIXME implement
-      typeUid        = part.typeUid; //FIXME implement
+      typeUid       = part.typeUid; //FIXME implement
       
       this._meshNameToPartTypeUId[ meshName ] = typeUid;
       this.parts[ typeUid ] = part;
@@ -102,18 +101,11 @@ class PartRegistry{
     }else{
       part = this.parts[ typeUid ].clone();
       //totally absurd are we dealing with classes, instances or what???
+      //hint: classes !!!!
     } 
     
-    //FIXME remove
-    if( !this.partMeshInstances[ typeUid ] )
-    {
-      this.partMeshInstances[ typeUid ] = [];
-    }
-    this.partMeshInstances[ typeUid ].push( mesh );
-    
-    //Register instance
+    //Register instance FIXME !! NO NO NO !!! 
     this.registerPartInstance( part );
-    
     //not sure
     part.name = part.typeName + "" + (this.partTypeInstances[ typeUid ].length - 1);
     
@@ -175,6 +167,10 @@ class PartRegistry{
     console.log("part post change", part);*/
     console.log("klass",klass);
     return klass;
+  }
+  
+  createTypeInstance( klassName ){
+    let klass = this.partTypesByName[ klassName ];
   }
 }
 

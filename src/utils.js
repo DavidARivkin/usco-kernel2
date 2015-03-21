@@ -40,4 +40,10 @@ var hashCode = function(s){
   return s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);              
 }
 
-export { generateUUID, hashCode };
+var nameCleanup = function( name ){
+   let cName = name.substr(0, name.lastIndexOf('.')); 
+   cName = cName.replace("_","");
+   return cName;
+}
+
+export { generateUUID, hashCode, nameCleanup };
