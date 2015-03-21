@@ -27,6 +27,7 @@ class Kernel{
     
     //not sure
     this.dataApi = new TestApi();
+    this._designDocs = [];
   }
   
   //should be part class ? 
@@ -146,24 +147,86 @@ class Kernel{
     //TODO: should look more like this
     //let design = yield this.dataApi.loadDesign( uri , options ); 
     
-    this.loadDocsOfDesign( );
+    this.loadActiveAssemblyState( );
+    //now get back mapping of fileName to uid
+    let meshNameToPartTypeUId = localStorage.getItem("jam!-meshNameToPartTypeUId" );
+    if( meshNameToPartTypeUId) {
+      meshNameToPartTypeUId = JSON.parse( meshNameToPartTypeUId );
+      this.partRegistry._meshNameToPartTypeUId = meshNameToPartTypeUId;
+    }
+    //now that we have the list of files that we need, load those
+    this.loadDocsOfDesign( callback );
+    
     return this.activeDesign;
   }
   
   saveActiveAssemblyState( ){
-    let strForm = JSON.stringify( this.activeDesign.activeAssembly );
-    localStorage.setItem("jam!-data-assembly", strForm );
+    console.log("saving active assembly state");
+    //localstorage
+    //let strForm = JSON.stringify( this.activeDesign.activeAssembly );
+    //localStorage.setItem("jam!-data-assembly", strForm );
+    
+    let strForm = JSON.stringify( {assembly:this.activeDesign.activeAssembly} );
+    
+    
+    let apiUri = "http://localhost:3080/api/";
+    let uri = `${apiUri}designs/${this.activeDesign.name}/assemblies/0`;
+    var xhr = new XMLHttpRequest();
+    // Open the connection.
+    xhr.open('POST', uri, true);
+    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        // File(s) uploaded.
+        console.log("assembly uploaded ok");
+      } else {
+        console.error('An error occurred!');
+      }
+    };
+    xhr.upload.addEventListener("progress", function(e) {
+        if (e.lengthComputable) {
+          var percentage = Math.round((e.loaded * 100) / e.total);
+          console.log("upload in progress", percentage);
+      }
+    }, false);
+    
+    xhr.send(strForm);
+    
+    //xmlhttp.send(JSON.stringify({name:"John Rambo", time:"2pm"}));
+    
   }
   
   loadActiveAssemblyState(){
-    let strAssembly = localStorage.getItem( "jam!-data-assembly" );
-    this.activeDesign.activeAssembly = new Assembly( strAssembly );
+    //local storage
+    //let strAssembly = localStorage.getItem( "jam!-data-assembly" );
+    //this.activeDesign.activeAssembly = new Assembly( strAssembly );
+    
+    let self = this;
+    let apiUri = "http://localhost:3080/api/";
+    let uri = `${apiUri}designs/${this.activeDesign.name}/assemblies/0`;
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', uri, true);
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        console.log("fetched ok");
+        console.log(this.responseText);
+        let strAssembly = this.responseText;
+        strAssembly = JSON.parse( strAssembly );
+        self.activeDesign.activeAssembly = new Assembly( strAssembly );
+        
+      } else {
+        console.error('An error occurred!');
+      }
+    };
+    xhr.send();
   }
   
   /* TODO: how about reusing the asset manager????
     also : only load data for files actually use in assembly
   */
-  loadDocsOfDesign(  ){
+  loadDocsOfDesign( callback ){
+    let self = this;
     let apiUri = "http://localhost:3080/api/";
     let uri = `${apiUri}designs/${this.activeDesign.name}/documents`;
     
@@ -173,6 +236,14 @@ class Kernel{
       if (xhr.status === 200) {
         console.log("fetched ok");
         console.log(this.responseText);
+        let data = JSON.parse( this.responseText );
+        data = data.filter( function( entry ){
+          let ext = entry.split(".").pop();
+          return ( ext.toLowerCase() === "stl");
+        });
+        if( callback ) callback( data );
+        
+        self._designDocs = data;
         
       } else {
         console.error('An error occurred!');
@@ -183,18 +254,24 @@ class Kernel{
   
   //FIXME: move this to asset manager ??
   uploadDoc( data, fileName, mimeType, uri ){
+    
+    //erm not sure
+    
+    //only upload if we do not have it
+    //TODO do checksum etc
+    if( this._designDocs.indexOf( fileName ) > -1 ) return;
+    
+    this._designDocs.push( fileName );
+    console.log("docs of design updated", this.partRegistry._meshNameToPartTypeUId[ fileName ] );
+    //TODO: store this resourceName/URI ==> uid on the server somewhere
+    let meshNameToPartTypeUIdMapStr = JSON.stringify( this.partRegistry._meshNameToPartTypeUId );
+    localStorage.setItem("jam!-meshNameToPartTypeUId", meshNameToPartTypeUIdMapStr );
   
     let apiUri = "http://localhost:3080/api/";
     let uri = `${apiUri}designs/${this.activeDesign.name}/documents`;
     var formData = new FormData();
     let name = "test";
-    //let fileName = "foo.stl";
-    
     formData.append(name, data, fileName);
-    // Files & blobs 
-    //formData.append(name, file, filename);
-    // Strings
-    //formData.append(name, value); 
    
     var xhr = new XMLHttpRequest();
     // Open the connection.
