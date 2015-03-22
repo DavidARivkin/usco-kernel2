@@ -41,26 +41,6 @@ class PartRegistry{
     }
   }
   
-  
-  /* wrapper abstracting whether one needs to wait for the part's mesh or not
-  */
-  *getPartTypeMesh( typeUid, original=false ){
-    if( ! this._partMeshTemplates[ typeUid ] ) return;
-    if( ! this._partMeshWaiters[ typeUid ] ) {
-      this._partMeshWaiters[ typeUid ] = Q.defer();
-    }
-    
-    //partMeshesToWaitFor.push( self.partWaiters[ typeUid ].promise );
-    var mesh = yield this._partMeshWaiters[ typeUid ];
-    //we have not been asked for the original mesh, get a copy instance
-    if( !original ){
-      mesh = mesh.clone();
-    }
-    return mesh
-  }
-  
-  
-  
   /* register a instance's 3d mesh
   this needs to be done PER INSTANCE not just once per part
   */
@@ -72,10 +52,9 @@ class PartRegistry{
     
     //the options are actually for the MESH 
     //we get the name of the mesh (needed)
+    //we do not want the mesh instance to have the name of the mesh file
     let meshName = options.name || "";
     let cName = nameCleanup( meshName ); 
-    //we do not want the mesh instance to have the name of the mesh file
-    options.name = cName;
     
     let typeUid = this._meshNameToPartTypeUId[ meshName ];
     
@@ -83,37 +62,24 @@ class PartRegistry{
     if( !typeUid ) {
       //FIXME: instead of PART , it could be a custom class created on the fly
       let klass = Part;
+      typeUid = generateUUID();
       //create ...
-      let dynKlass = this.makeNamedPartKlass( cName );
+      partKlass = this.makeNamedPartKlass( cName, typeUid );
       //& register class
-      this.partTypes[ typeUid ]     = dynKlass;
-      this.partTypesByName[ cName ] = dynKlass;
+      this.partTypes[ typeUid ]     = partKlass;
+      this.partTypesByName[ cName ] = partKlass;
       
-      var part = new klass( options );//new Part( options );
-      
-      part.typeName = cName;//name of the part CLASS
-      part.typeUid  = generateUUID(); //FIXME implement
-      typeUid       = part.typeUid; //FIXME implement
-      
+      //TODO: move this to a visual specific part of the code
       this._meshNameToPartTypeUId[ meshName ] = typeUid;
-      this.parts[ typeUid ] = part;
-      
     }else{
-      part = this.parts[ typeUid ].clone();
-      //totally absurd are we dealing with classes, instances or what???
-      //hint: classes !!!!
+      partKlass = this.partTypes[ typeUid ];
     } 
-    
-    //Register instance FIXME !! NO NO NO !!! 
-    this.registerPartInstance( part );
-    //not sure
-    part.name = part.typeName + "" + (this.partTypeInstances[ typeUid ].length - 1);
     
     //do we have ANY meshes for this part ?
     //if not, add it to templates
     this.addTemplateMeshForPartType( mesh.clone(), typeUid );
 
-    return part;
+    return partKlass;
   }
   
   /* register a part type
@@ -137,14 +103,14 @@ class PartRegistry{
       this.partTypeInstances[ typeUid ] = [];
     }
     this.partTypeInstances[ typeUid ].push( partInstance );
+    
   }
   
   /*experimental:
    generate a named subclass of part, based on the name of Part CLASS
   */
-  makeNamedPartKlass( klassName ){
+  makeNamedPartKlass( klassName, typeUid ){
     console.log("making named class");
-    
     //FIXME : won't work, as class is not support in browsers , where the eval() is taking
     //place
     /*let expSubClassStr = `class ${klassName} extends Part{
@@ -159,9 +125,19 @@ class PartRegistry{
       }
       ${klassName}.prototype = Object.create( Part.prototype );
       ${klassName}.prototype.constructor = ${klassName};  
+      
+      //set class attributes
+      /*${klassName}.prototype.typeName = '${klassName}';
+      ${klassName}.prototype.typeUid = '${typeUid}';*/
     `;
     console.log("expSubClassStr",expSubClassStr);
     let klass = eval( expSubClassStr );
+    klass.prototype.typeName = klassName;
+    klass.prototype.typeUid = typeUid;
+    
+    klass.typeName = klassName;
+    klass.typeUid = typeUid;
+    
     /*console.log("part pre change", part);
     part.__proto__ = testKlass;
     console.log("part post change", part);*/
@@ -169,8 +145,37 @@ class PartRegistry{
     return klass;
   }
   
-  createTypeInstance( klassName ){
-    let klass = this.partTypesByName[ klassName ];
+  /* create a new instance of a type */
+  createTypeInstance( klassOrKlassName, options ){
+    //let klass = this.partTypesByName[ klassName ];
+    let klass = klassOrKlassName;
+    let typeUid = klass.prototype.typeUid;
+    var part = new klass( options );
+    
+    //Register instance ??
+    this.registerPartInstance( part );
+    //this.parts[ typeUid ] = part;
+    //not sure
+    part.name = part.typeName + "" + (this.partTypeInstances[ typeUid ].length - 1);
+    return part;
+  }
+  
+    
+  /* wrapper abstracting whether one needs to wait for the part's mesh or not
+  */
+  *getPartTypeMesh( typeUid, original=false ){
+    if( ! this._partMeshTemplates[ typeUid ] ) return;
+    if( ! this._partMeshWaiters[ typeUid ] ) {
+      this._partMeshWaiters[ typeUid ] = Q.defer();
+    }
+    
+    //partMeshesToWaitFor.push( self.partWaiters[ typeUid ].promise );
+    var mesh = yield this._partMeshWaiters[ typeUid ];
+    //we have not been asked for the original mesh, get a copy instance
+    if( !original ){
+      mesh = mesh.clone();
+    }
+    return mesh
   }
 }
 

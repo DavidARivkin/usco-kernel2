@@ -8,8 +8,13 @@ import { TestApi } from "./testApi/testApi"
 
 import { generateUUID, hashCode, nameCleanup } from "./utils";
 
+import { co } from "co";
+
 class Kernel{
   constructor(){
+    //FIXME: horrible temp hack
+    this.co = co;
+  
     this.partRegistry = new PartRegistry();
     
     //not sure at ALL
@@ -32,13 +37,8 @@ class Kernel{
   
   //should be part class ? 
   registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
-    var part = this.partRegistry.registerPartTypeMesh( part, mesh, options );
-    
-    //FIXME: unsure, this is both too three.js specific, and a bit weird to 
-    //inject data like that, mostly as we have mappings from entity to mesh already
-    mesh.userData.entity = part;
-    
-    return part;
+    var partKlass = this.partRegistry.registerPartTypeMesh( part, mesh, options );
+    return partKlass;
   }
   
   /*
@@ -48,6 +48,13 @@ class Kernel{
     let mesh = this.partRegistry._partMeshTemplates[ entity.typeUid ].clone();
     this.registerEntityMeshRel( entity, mesh );
     return mesh;
+  }
+  
+  makePartTypeInstance( partType ){
+    //FIXME: unsure, this is both too three.js specific, and a bit weird to 
+    //inject data like that, mostly as we have mappings from entity to mesh already
+    //mesh.userData.entity = part;
+    return this.partRegistry.createTypeInstance( partType );
   }
   
   registerPartInstance( partInst ){
@@ -182,63 +189,14 @@ class Kernel{
   saveActiveAssemblyState( ){
     console.log("saving active assembly state");
     //localstorage
-    //let strForm = JSON.stringify( this.activeDesign.activeAssembly );
-    //localStorage.setItem("jam!-data-assembly", strForm );
-    
-    let strForm = JSON.stringify( {assembly:this.activeDesign.activeAssembly} );
-    
-    let apiUri = "http://localhost:3080/api/";
-    let uri = `${apiUri}designs/${this.activeDesign.name}/assemblies/0`;
-    var xhr = new XMLHttpRequest();
-    // Open the connection.
-    xhr.open('POST', uri, true);
-    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        // File(s) uploaded.
-        console.log("assembly uploaded ok");
-      } else {
-        console.error('An error occurred!');
-      }
-    };
-    xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          var percentage = Math.round((e.loaded * 100) / e.total);
-          console.log("upload in progress", percentage);
-      }
-    }, false);
-    
-    xhr.send(strForm);
-    
-    //xmlhttp.send(JSON.stringify({name:"John Rambo", time:"2pm"}));
-    
+    let strForm = JSON.stringify( this.activeDesign.activeAssembly );
+    localStorage.setItem("jam!-data-assembly", strForm );
   }
   
   loadActiveAssemblyState( callback ){
     //local storage
-    //let strAssembly = localStorage.getItem( "jam!-data-assembly" );
-    //this.activeDesign.activeAssembly = new Assembly( strAssembly );
-    
-    let self = this;
-    let apiUri = "http://localhost:3080/api/";
-    let uri = `${apiUri}designs/${this.activeDesign.name}/assemblies/0`;
-    
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', uri, true);
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        console.log("fetched ok");
-        console.log(this.responseText);
-        let strAssembly = this.responseText;
-        strAssembly = JSON.parse( strAssembly );
-        self.activeDesign.activeAssembly = new Assembly( strAssembly );
-        if(callback) callback();
-        
-      } else {
-        console.error('An error occurred!');
-      }
-    };
-    xhr.send();
+    let strAssembly = localStorage.getItem( "jam!-data-assembly" );
+    this.activeDesign.activeAssembly = new Assembly( strAssembly );
   }
   
   /* TODO: how about reusing the asset manager????

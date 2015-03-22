@@ -9,7 +9,9 @@
   "directories": {
     "lib": "./lib"
   },
-  "dependencies": {},
+  "dependencies": {
+    "co": "^4.5.1"
+  },
   "devDependencies": {
     "babelify": "^5.0.4",
     "babel": "^4.7.12"
