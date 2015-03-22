@@ -32,20 +32,39 @@ class Kernel{
     
     //not sure
     this.dataApi = new TestApi();
-    this._designDocs = [];
   }
+
   
-  //should be part class ? 
   registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
     var partKlass = this.partRegistry.registerPartTypeMesh( part, mesh, options );
+    
+    if( "resource" in options ){
+      let resource = options.resource;
+      console.log("resource", resource);
+      
+      //TODO: clean this up, just a hack
+      this.dataApi.designName = this.activeDesign.name;
+      //console.log("docs of design updated", this.partRegistry._meshNameToPartTypeUId[ fileName ] );
+      //TODO: store this resourceName/URI ==> uid on the server somewhere
+      let meshNameToPartTypeUIdMapStr = JSON.stringify( this.partRegistry._meshNameToPartTypeUId );
+      localStorage.setItem("jam!-meshNameToPartTypeUId", meshNameToPartTypeUIdMapStr );
+      //we have a mesh with a resource, store the file
+      this.dataApi.saveFile( resource.name, resource._file );
+    }
+    
+    //save part types??
+    this.dataApi.saveCustomEntityTypes( this.partRegistry._customPartTypesMeta );
+    
     return partKlass;
   }
   
   /*
     get new instance of mesh for an entity that does not have a mesh YET
   */
-  getPartMeshInstance( entity ){
-    let mesh = this.partRegistry._partMeshTemplates[ entity.typeUid ].clone();
+  *getPartMeshInstance( entity ){
+    let mesh = yield this.partRegistry.getPartTypeMesh( entity.typeUid );
+    //TODO: perhaps do this differently: ie return a wrapper mesh with just a bounding
+    //box and "fill in"/stream in the mesh later ?
     this.registerEntityMeshRel( entity, mesh );
     return mesh;
   }
@@ -146,6 +165,8 @@ class Kernel{
     //FIXME horrible
     this.activeDesign.name = designName;
     
+    return;
+    
     //TODO: should look more like this
     //let design = yield this.dataApi.loadDesign( uri , options ); 
     
@@ -227,64 +248,6 @@ class Kernel{
       }
     };
     xhr.send();
-  }
-  
-  //FIXME: move this to asset manager ??
-  uploadDoc( data, fileName, mimeType, uri ){
-    
-    //erm not sure
-    
-    //only upload if we do not have it
-    //TODO do checksum etc
-    if( this._designDocs.indexOf( fileName ) > -1 ) return;
-    
-    this._designDocs.push( fileName );
-    console.log("docs of design updated", this.partRegistry._meshNameToPartTypeUId[ fileName ] );
-    //TODO: store this resourceName/URI ==> uid on the server somewhere
-    let meshNameToPartTypeUIdMapStr = JSON.stringify( this.partRegistry._meshNameToPartTypeUId );
-    localStorage.setItem("jam!-meshNameToPartTypeUId", meshNameToPartTypeUIdMapStr );
-  
-    let apiUri = "http://localhost:3080/api/";
-    let uri = `${apiUri}designs/${this.activeDesign.name}/documents`;
-    var formData = new FormData();
-    let name = "test";
-    formData.append(name, data, fileName);
-   
-    var xhr = new XMLHttpRequest();
-    // Open the connection.
-    xhr.open('POST', uri, true);
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        // File(s) uploaded.
-        console.log("uploaded ok");
-      } else {
-        console.error('An error occurred!');
-      }
-    };
-    xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          var percentage = Math.round((e.loaded * 100) / e.total);
-          console.log("upload in progress", percentage);
-      }
-
-    }, false);
-    
-    xhr.send(formData);
-    
-    /*var reader = new FileReader();  
-    
-     this.xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          var percentage = Math.round((e.loaded * 100) / e.total);
-        }
-      }, false);
-    xhr.open("POST", "http://demos.hacks.mozilla.org/paul/demos/resources/webservices/devnull.php");
-    xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
-    reader.onload = function(evt) {
-      xhr.sendAsBinary(evt.target.result);
-    };
-    reader.readAsBinaryString(file);*/
-    
   }
   
 }
