@@ -108,7 +108,6 @@ class PartRegistry{
       this.partTypeInstances[ typeUid ] = [];
     }
     this.partTypeInstances[ typeUid ].push( partInstance );
-    
   }
   
   /*experimental:
@@ -139,9 +138,6 @@ class PartRegistry{
     klass.prototype.typeName = klassName;
     klass.prototype.typeUid = typeUid;
     
-    //klass.typeName = klassName;
-    //klass.typeUid = typeUid;
-    
     this._customPartTypesMeta[ typeUid ] = { typeName:klassName, typeUid:typeUid };
     
     
@@ -155,7 +151,7 @@ class PartRegistry{
     let typeUid = klass.prototype.typeUid;
     var part = new klass( options );
     
-    //Register instance ??
+    //Register instance
     this.registerPartInstance( part );
     //not sure
     part.name = part.typeName + "" + (this.partTypeInstances[ typeUid ].length - 1);
