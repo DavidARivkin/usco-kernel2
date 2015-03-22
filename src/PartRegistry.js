@@ -1,3 +1,5 @@
+//import { Q } from "q";
+var Q = require('q');
 import { generateUUID, hashCode, nameCleanup } from "./utils";
 import { Part } from "./Part";
 
@@ -10,39 +12,42 @@ class PartRegistry{
     //TODO : should this be a facade ?
     this.parts = {};
     //TODO: is this not redundant with assets, but stored by part id ???
-    this._partMeshTemplates = {}; //the original base mesh: ONE PER PART
-    this._partMeshWaiters  = {};//internal : when
+    this._partTypeMeshTemplates = {}; //the original base mesh: ONE PER PART
+    this._partTypeMeshWaiters  = {};//internal : when
     this.partMeshInstances = {};
     
-    //FIXME: temporary , until I find better
+    //FIXME: VISUALS temporary , until I find better
     this._meshNameToPartTypeUId = {};
     
     this.partTypes = {};
     this.partTypesByName = {};
     this.partTypeInstances = {};
+    
+    //FIXME: not sure: json representation of custom PART types, stored by typeUid
+    this._customPartTypesMeta = {};
   }
   
   /* 
     adds the "template mesh" for a given part
-    this will be used as a basic instance to clone for all instances
-    
-    FIXME: is this no close to defining a class , of which all instances are...instances?
+    this will be used as a basic MESH instance to clone for all instances
   */
   addTemplateMeshForPartType( mesh, typeUid ){
-    if( ! this._partMeshTemplates[ typeUid ] ){
+    if( ! this._partTypeMeshTemplates[ typeUid ] ){
       
-      this._partMeshTemplates[ typeUid ] = mesh;
+      this._partTypeMeshTemplates[ typeUid ] = mesh;
       
       //anybody waiting for that mesh yet ?
-      if( this._partMeshWaiters[ typeUid ] ){
+      if( this._partTypeMeshWaiters[ typeUid ] ){
         console.log("resolving mesh of ", typeUid );
-        this._partMeshWaiters[ typeUid ].resolve( mesh );
+        this._partTypeMeshWaiters[ typeUid ].resolve( mesh );
       }
     }
   }
   
-  /* register a instance's 3d mesh
-  this needs to be done PER INSTANCE not just once per part
+  /* 
+  register a instance's 3d mesh, 
+  
+    @returns: a class
   */
   registerPartTypeMesh( partKlass, mesh, options ){
     console.log("registering part mesh");
@@ -119,7 +124,6 @@ class PartRegistry{
         }
     }`;*/
     //SO we use the "old" es5 syntax
-    
     let expSubClassStr = `var ${klassName} = function(options){
         Part.call( this, options );
       }
@@ -135,13 +139,12 @@ class PartRegistry{
     klass.prototype.typeName = klassName;
     klass.prototype.typeUid = typeUid;
     
-    klass.typeName = klassName;
-    klass.typeUid = typeUid;
+    //klass.typeName = klassName;
+    //klass.typeUid = typeUid;
     
-    /*console.log("part pre change", part);
-    part.__proto__ = testKlass;
-    console.log("part post change", part);*/
-    console.log("klass",klass);
+    this._customPartTypesMeta[ typeUid ] = { typeName:klassName, typeUid:typeUid };
+    
+    
     return klass;
   }
   
@@ -154,7 +157,6 @@ class PartRegistry{
     
     //Register instance ??
     this.registerPartInstance( part );
-    //this.parts[ typeUid ] = part;
     //not sure
     part.name = part.typeName + "" + (this.partTypeInstances[ typeUid ].length - 1);
     return part;
@@ -164,13 +166,23 @@ class PartRegistry{
   /* wrapper abstracting whether one needs to wait for the part's mesh or not
   */
   *getPartTypeMesh( typeUid, original=false ){
-    if( ! this._partMeshTemplates[ typeUid ] ) return;
-    if( ! this._partMeshWaiters[ typeUid ] ) {
-      this._partMeshWaiters[ typeUid ] = Q.defer();
+    if( ! this._partTypeMeshTemplates[ typeUid ] && ! this._partTypeMeshWaiters[ typeUid ] ){
+      throw new Error("No matching mesh found");
+    }
+    
+    if( ! this._partTypeMeshWaiters[ typeUid ] ) {
+      this._partTypeMeshWaiters[ typeUid ] = Q.defer();
+    }
+    
+    if( this._partTypeMeshTemplates[ typeUid ] ){
+      let mesh = this._partTypeMeshTemplates[ typeUid ] ;
+      console.log("mesh", mesh);
+      this._partTypeMeshWaiters[ typeUid ].resolve( mesh );
+      //let mesh = yield this._partTypeMeshWaiters[ typeUid ];
     }
     
     //partMeshesToWaitFor.push( self.partWaiters[ typeUid ].promise );
-    var mesh = yield this._partMeshWaiters[ typeUid ];
+    let mesh = yield this._partTypeMeshWaiters[ typeUid ].promise;
     //we have not been asked for the original mesh, get a copy instance
     if( !original ){
       mesh = mesh.clone();
