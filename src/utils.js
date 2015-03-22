@@ -36,7 +36,7 @@ var generateUUID = function () {
 
 }()
 
-var hashCode = function(s){
+var hashCodeFromString = function(s){
   return s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);              
 }
 
@@ -46,4 +46,4 @@ var nameCleanup = function( name ){
    return cName;
 }
 
-export { generateUUID, hashCode, nameCleanup };
+export { generateUUID, hashCodeFromString, nameCleanup };

@@ -38,6 +38,7 @@ class Kernel{
   registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
     var partKlass = this.partRegistry.registerPartTypeMesh( part, mesh, options );
     
+    //if we have meshes or sources
     if( "resource" in options ){
       let resource = options.resource;
       console.log("resource", resource);
@@ -51,9 +52,10 @@ class Kernel{
       //we have a mesh with a resource, store the file
       this.dataApi.saveFile( resource.name, resource._file );
     }
-    
     //save part types??
     this.dataApi.saveCustomEntityTypes( this.partRegistry._customPartTypesMeta );
+    
+    this.bom.registerPartType( partKlass );
     
     return partKlass;
   }
@@ -79,9 +81,7 @@ class Kernel{
   registerPartInstance( partInst ){
     this.activeAssembly.add( partInst );
     //register new instance in the Bill of materials
-    //this.bom.registerPart( partInst );
-    //self._registerInstanceInBom( mesh.userData.part.bomId, mesh );
-    //part.bomId = self._registerImplementationInFakeBOM( resource.uri, partName );
+    this.bom.registerInstance( partInst, {} );
   }  
   
   /* register the mesh <-> entity  relationship
@@ -95,20 +95,30 @@ class Kernel{
      this.meshInstancesToEntitiesMap.set( mesh, entity );
   }
   
-  duplicateEntity( entity ){
+  duplicateEntity( originalEntity, addToAssembly=true ){
     console.log("duplicating entity");
-    var dupe = entity.clone();
-    
-    //FIXME : needs to work with all entity types
-    this.partRegistry.registerPartInstance( entity );
-    dupe.name = dupe.typeName + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1);
-    
-    if( entity instanceof Part )
-    {
-      this.activeAssembly.add( dupe );
-      //TODO: how to deal with auto offset to prevent overlaps
+    //var dupe = entity.clone();
+    //entity.prototype();
+    let entityType = this.partRegistry.partTypes[ originalEntity.typeUid ];
+    let dupe       = this.partRegistry.createTypeInstance( entityType );
+    //FIXME: do this correctly
+    let doNotCopy = ["iuid","name"];
+    let onlyCopy = ["pos","rot","sca"];
+    for(key in originalEntity ){
+      console.log("key",key);
+      if( onlyCopy.indexOf( key ) > -1 ){
+        dupe[key] = Object.assign({}, originalEntity[key] );
+      }
     }
     
+    //FIXME : needs to work with all entity types
+    dupe.name = dupe.typeName + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1);
+    
+    if( addToAssembly )//entity instanceof Part )
+    {
+      this.registerPartInstance( dupe );
+      //TODO: how to deal with auto offset to prevent overlaps ?
+    }
     return dupe
   }
   
@@ -116,6 +126,8 @@ class Kernel{
   WARNING: this is not the same as deleting one*/
   removeEntity( entity ){
     this.activeAssembly.remove( entity );
+    this.bom.unRegisterInstance( entity );
+    
     //FIXME: add REMOVAL FROM BOM
     /*try{
       this._unRegisterInstanceFromBom( selectedObject.userData.part.bomId , selectedObject );

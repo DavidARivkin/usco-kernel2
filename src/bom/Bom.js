@@ -1,4 +1,4 @@
-
+import { hashCodeFromString } from "../utils";
 
 class BomEntry{
   constructor(name, description, version, amount, unit, parameters){
@@ -20,40 +20,61 @@ class Bom {
     
     //mappings between part types and their bom entries: ie one bom entry per class + params
     this.partTypeToBomEntryMap = new WeakMap();
+    this.bomEntryToPartTypeMap = new WeakMap();
+    this.partTypeAndParamsToBomEntryMap = new Map();
+    
+    this.partInstanceToBomEntryMap = new WeakMap();
   }
   
   //basic api
-  registerPart( partData, implementations={}, instances ){
+  registerPartType( partKlass, parameters={} ){
+    console.log("registering part type in bom", partKlass);
     const DEFAULTS = {
-      name:"",
+      id: -1,
+      name: partKlass.prototype.typeName,
       description:"",
       version:"0.0.0",
       qty:0,
       physicalQty:0,//this can be used for weight, distance etc
       unit:"EA",//this applies to the physicalQty field
-      parameters:"",
+      parameters:parameters,
       implementations:{},//without defaults to "default":"xxx.stl"
-      
       //FIXME: hack field? shoud this be in another data structure ?
-      _instances:{}//same keys as implementations, values are in memory instances ie "meshes"
+      _instances:{}//same keys as implementations, values are in memory entities
     };
+    let bomEntry = Object.assign({}, DEFAULTS, bomEntry); 
     
-    let partData = Object.assign({}, DEFAULTS, partData); 
+    //A unique bom entry is a partType/uid + a given set of parameters
+    let hash = hashCodeFromString( partKlass.prototype.typeUid+JSON.stringify( parameters ) );
+    if( ! this.partTypeAndParamsToBomEntryMap.has( hash ) )
+    {
+      this.partTypeAndParamsToBomEntryMap.set( hash, bomEntry );
+      this.bom.push( bomEntry );
+      bomEntry.id = this.bom.length - 1 ; 
+    }
+    //this.bomEntryToPartTypeMap.set( bomEntry, partKlass );
+    //this.partTypeToBomEntryMap.set( [partKlass, parameters], bomEntry );
+    
+    
   }
   
-
   /*
     register an instance 
-  
   */
-  registerInstance( partId, instance )
+  registerInstance( instance, parameters={} )
   {
     if(!instance) throw new Error("No instance given");
-    var bomEntry = this.bom[ partId ];
-    if(!bomEntry) throw new Error("Not existing partId specified");
+    
+    let hash = hashCodeFromString( instance.typeUid+JSON.stringify( parameters ) );
+    //var bomEntry = this.bom[ partId ];
+    let bomEntry = this.partTypeAndParamsToBomEntryMap.get( hash )
+    
+    if(!bomEntry) throw new Error("Bom entry not found");
     
     //console.log("registering", instance, "as instance of ", bomEntry.name ); 
-    bomEntry._instances.push( instance);
+    //bomEntry._instances.push( instance);
+    this.partInstanceToBomEntryMap.set( instance, bomEntry );
+    
     //FIXME can't we use the length of instances ? or should we allow for human settable variation
     bomEntry.qty += 1;
   }
@@ -61,15 +82,15 @@ class Bom {
   /*remove an instance 
   
   */
-  unRegisterInstance( partId, instance ){
+  unRegisterInstance( instance ){
     if(!instance) throw new Error("No instance given");
-    var bomEntry = this.bom[ partId ];
-    if(!bomEntry) throw new Error("bad partId specified");
+    var bomEntry = this.partInstanceToBomEntryMap.get( instance );
+    if(!bomEntry) throw new Error("Bom entry not found");
     
-    var index = bomEntry._instances.indexOf( instance );
-    if( index == -1 ) return;
-    
-    bomEntry._instances.splice( index, 1 );
+    //var index = bomEntry._instances.indexOf( instance );
+    //if( index == -1 ) return;
+    //bomEntry._instances.splice( index, 1 );
+    this.partInstanceToBomEntryMap.delete( instance );
     //FIXME can't we use the length of instances ? or should we allow for human settable variation
     bomEntry.qty -= 1;
   }
@@ -92,19 +113,6 @@ class Bom {
     console.log("registering", meshUri, "as implementation of ", partName); 
     if(!partName) throw new Error("no part name specified");
     
-    /*var partIndex = -1;
-    var bomEntry = null;
-    
-    for(var i=0;i<this.bom.length;i++)
-    {
-      var entry = this.bom[i];
-      partIndex = i;
-      if(entry.name === partName)
-      {
-        bomEntry = entry;
-        break;
-      }
-    }*/
     let bomEntry = this.getPartByName( partName );
     
     if(!bomEntry){
