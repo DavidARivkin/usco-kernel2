@@ -1,11 +1,13 @@
+//import * as nid from "nid"; FIXME does not work
+var nid = require('nid')
 import { generateUUID } from "../utils";
 import { Assembly }     from "../Assembly";
-
 
 class Design{
   constructor( options ){
      const DEFAULTS = {
       uid : generateUUID(),
+      sid : nid(),//short id, 6 character
       name: "NewDesign",
       title:"New Design",
       description:"",
