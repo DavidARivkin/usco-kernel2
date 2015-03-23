@@ -8,12 +8,18 @@ import { TestApi } from "./testApi/testApi"
 
 import { generateUUID, hashCode, nameCleanup } from "./utils";
 
+
 import { co } from "co";
+
+//TODO:remove
+import { ThicknessAnnotation } from "./annotations/ThicknessAnnot.js"
+
 
 class Kernel{
   constructor(){
     //FIXME: horrible temp hack
     this.co = co;
+    this.ThicknessAnnotation = ThicknessAnnotation;
   
     this.partRegistry = new PartRegistry();
     
@@ -32,6 +38,10 @@ class Kernel{
     
     //not sure
     this.dataApi = new TestApi();
+    
+    
+    //TODO:remove, this is temporary
+    this.activeAnnotations = [];
   }
 
   
@@ -72,9 +82,6 @@ class Kernel{
   }
   
   makePartTypeInstance( partType ){
-    //FIXME: unsure, this is both too three.js specific, and a bit weird to 
-    //inject data like that, mostly as we have mappings from entity to mesh already
-    //mesh.userData.entity = part;
     return this.partRegistry.createTypeInstance( partType );
   }
   
@@ -82,6 +89,9 @@ class Kernel{
     this.activeAssembly.add( partInst );
     //register new instance in the Bill of materials
     this.bom.registerInstance( partInst, {} );
+    
+    //persist changes
+    this.saveActiveAssemblyState();
   }  
   
   /* register the mesh <-> entity  relationship
@@ -128,10 +138,8 @@ class Kernel{
     this.activeAssembly.remove( entity );
     this.bom.unRegisterInstance( entity );
     
-    //FIXME: add REMOVAL FROM BOM
-    /*try{
-      this._unRegisterInstanceFromBom( selectedObject.userData.part.bomId , selectedObject );
-    }catch(error){} //FIXME: only works for items in bom*/
+    //persist changes
+    this.saveActiveAssemblyState();
     
     //remove entry not sure about this
     //this actually needs to be done on the visual side of things, not in the pure data layer
@@ -141,7 +149,7 @@ class Kernel{
   } 
   
   //helpers
-  
+
   /* is the given entity part of the active assembly?*/
   isEntityinActiveAssembly( entity ){
     //this.entitiesToMeshInstancesMap.has( entity );
@@ -150,6 +158,7 @@ class Kernel{
   
   /* retrieve the visual/mesh of a given entity */
   getMeshOfEntity( entity ){
+    if( !entity || ! this.entitiesToMeshInstancesMap.has( entity ) ) return undefined;
     return this.entitiesToMeshInstancesMap.get( entity );
   }
   
@@ -158,6 +167,7 @@ class Kernel{
     return this.meshInstancesToEntitiesMap.get( mesh );
   }
   
+  //////////////////////////
   //FIXME after this point, very doubtfull to be kept in this form & shape
   saveDesign( design ){
     let design = this.activeDesign;
@@ -176,47 +186,7 @@ class Kernel{
     let design = new Design({name:designName,title:"Groovy design", description:"a classy design"});
     //FIXME horrible
     this.activeDesign.name = designName;
-    
     return;
-    
-    //TODO: should look more like this
-    //let design = yield this.dataApi.loadDesign( uri , options ); 
-    
-    //this.loadActiveAssemblyState( );
-    //now get back mapping of fileName to uid
-    let meshNameToPartTypeUId = localStorage.getItem("jam!-meshNameToPartTypeUId" );
-    if( meshNameToPartTypeUId) {
-      meshNameToPartTypeUId = JSON.parse( meshNameToPartTypeUId );
-      this.partRegistry._meshNameToPartTypeUId = meshNameToPartTypeUId;
-      
-      //FIXME: horrible hack, see code in part registry
-      for( key in meshNameToPartTypeUId)
-      {
-        let klass = Part;
-        let cName = nameCleanup(key);
-        let options = { name:cName };
-        let part = new klass( options );//new Part( options );
-        let typeUid = meshNameToPartTypeUId[key];
-        
-        part.typeName = cName;//name of the part CLASS
-        part.typeUid  = typeUid;
-        this.partRegistry.parts[ typeUid ] = part;
-        
-        this.partRegistry.registerPartInstance( part );
-        //not sure
-        part.name = part.typeName + "" + (this.partRegistry.partTypeInstances[ typeUid ].length - 1);
-        
-        //do we have ANY meshes for this part ?
-        //if not, add it to templates
-      }
-    }
-    
-    
-    
-    //now that we have the list of files that we need, load those
-    this.loadDocsOfDesign( callback );
-    
-    return this.activeDesign;
   }
   
   saveActiveAssemblyState( ){
@@ -232,35 +202,6 @@ class Kernel{
     this.activeDesign.activeAssembly = new Assembly( strAssembly );
   }
   
-  /* TODO: how about reusing the asset manager????
-    also : only load data for files actually use in assembly
-  */
-  loadDocsOfDesign( callback ){
-    let self = this;
-    let apiUri = "http://localhost:3080/api/";
-    let uri = `${apiUri}designs/${this.activeDesign.name}/documents`;
-    
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', uri, true);
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        console.log("fetched ok");
-        console.log(this.responseText);
-        let data = JSON.parse( this.responseText );
-        data = data.filter( function( entry ){
-          let ext = entry.split(".").pop();
-          return ( ext.toLowerCase() === "stl");
-        });
-        if( callback ) callback( data );
-        
-        self._designDocs = data;
-        
-      } else {
-        console.error('An error occurred!');
-      }
-    };
-    xhr.send();
-  }
   
 }
 
