@@ -1,5 +1,5 @@
 import { Entity } from "../Entity";
-import { generateUUID } from "./utils";
+import { generateUUID } from "../utils";
 
 /*** 
 *Base class for defining annotations
@@ -20,9 +20,11 @@ class Annotation extends Entity{
   }
   
   clone(){
-    let clone = new Annotation({name:this.name, this.title, this.notes, color:this.color});
+    let clone = new Annotation({name:this.name, title:this.title, notes:this.notes, color:this.color});
     return clone;
   }
 }
+
+Annotation.prototype.typeUid = generateUUID();
 
 export { Annotation };

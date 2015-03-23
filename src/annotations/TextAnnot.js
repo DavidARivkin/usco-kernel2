@@ -28,5 +28,6 @@ class TextAnnotation extends Annotation{
   }
 }
 
+TextAnnotation.prototype.typeUid = generateUUID();
 
 export { TextAnnotation };

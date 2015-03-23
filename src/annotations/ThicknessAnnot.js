@@ -1,5 +1,5 @@
-import { Annotation } from "./Entity";
-
+import { Annotation } from "./Annotation";
+import { generateUUID } from "../utils";
 /*** 
 *Thickness annotation
 ***/
@@ -29,5 +29,7 @@ class ThicknessAnnotation extends Annotation{
     return clone;
   }
 }
+
+ThicknessAnnotation.prototype.typeUid = generateUUID();
 
 export { ThicknessAnnotation };
