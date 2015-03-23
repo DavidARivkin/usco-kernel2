@@ -10,7 +10,8 @@
     "lib": "./lib"
   },
   "dependencies": {
-    "co": "^4.5.1"
+    "co": "^4.5.1",
+    "nid": "^0.3.2"
   },
   "devDependencies": {
     "babelify": "^5.0.4",
