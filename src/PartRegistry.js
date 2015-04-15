@@ -1,7 +1,7 @@
-//import { Q } from "q";
-var Q = require('q');
+import Q from 'q'
+import co from 'co'
 import { generateUUID, hashCode, nameCleanup } from "./utils";
-import { Part } from "./Part";
+import Part from "./Part";
 
 //FIXME: how much of an overlap with bom ?
 //FIXME: how much of an overlap with asset manager?
@@ -172,7 +172,7 @@ class PartRegistry{
     
     if( this._partTypeMeshTemplates[ typeUid ] ){
       let mesh = this._partTypeMeshTemplates[ typeUid ] ;
-      console.log("mesh", mesh);
+      //console.log("mesh", mesh);
       this._partTypeMeshWaiters[ typeUid ].resolve( mesh );
       //let mesh = yield this._partTypeMeshWaiters[ typeUid ];
     }
@@ -187,4 +187,4 @@ class PartRegistry{
   }
 }
 
-export { PartRegistry };
+export default PartRegistry ;

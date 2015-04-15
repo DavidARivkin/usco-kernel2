@@ -63,4 +63,4 @@ class Assembly extends ANode{
  
 }
 
-export { Assembly }
+export default Assembly

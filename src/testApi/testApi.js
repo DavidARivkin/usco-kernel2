@@ -10,6 +10,11 @@ class TestApi{
     this._designDocs = [];
   }
 
+
+  getUserDesign(user,options){
+
+
+  }
   
   saveDesign( design, options ){
     console.log("saving design", design);
@@ -195,4 +200,4 @@ class TestApi{
 }
 
 
-export { TestApi }
+export default TestApi

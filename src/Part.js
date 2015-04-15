@@ -1,4 +1,4 @@
-import { Entity } from "./Entity";
+import Entity from "./Entity";
 import { generateUUID } from "./utils";
 
 /*** 
@@ -56,4 +56,4 @@ class Part extends Entity{
 Part.prototype.id = generateUUID(); 
 
 
-export { Part };
+export default Part ;

@@ -1,7 +1,7 @@
 //import * as nid from "nid"; FIXME does not work
 var nid = require('nid')
-import { generateUUID } from "../utils";
-import { Assembly }     from "../Assembly";
+import { generateUUID } from "../utils"
+import Assembly from "../Assembly"
 
 class Design{
   constructor( options ){
@@ -54,4 +54,4 @@ class Design{
   
 }
 
-export { Design }
+export default Design

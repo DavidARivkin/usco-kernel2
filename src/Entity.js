@@ -9,4 +9,4 @@ class Entity{
   }
 }
 
-export { Entity };
+export default Entity ;
