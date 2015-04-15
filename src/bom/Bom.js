@@ -21,8 +21,9 @@ class Bom {
     //mappings between part types and their bom entries: ie one bom entry per class + params
     this.partTypeToBomEntryMap = new WeakMap();
     this.bomEntryToPartTypeMap = new WeakMap();
-    this.partTypeAndParamsToBomEntryMap = new Map();
     
+    //this.bomEntryToPartInstances = new WeakMap();
+    this.partTypeAndParamsToBomEntryMap = new Map();
     this.partInstanceToBomEntryMap = new WeakMap();
   }
   
@@ -54,8 +55,6 @@ class Bom {
     }
     //this.bomEntryToPartTypeMap.set( bomEntry, partKlass );
     //this.partTypeToBomEntryMap.set( [partKlass, parameters], bomEntry );
-    
-    
   }
   
   /*
@@ -66,11 +65,9 @@ class Bom {
     if(!instance) throw new Error("No instance given");
     
     let hash = hashCodeFromString( instance.typeUid+JSON.stringify( parameters ) );
-    //var bomEntry = this.bom[ partId ];
     let bomEntry = this.partTypeAndParamsToBomEntryMap.get( hash )
     
     if(!bomEntry) throw new Error("Bom entry not found");
-    
     //console.log("registering", instance, "as instance of ", bomEntry.name ); 
     //bomEntry._instances.push( instance);
     this.partInstanceToBomEntryMap.set( instance, bomEntry );
@@ -139,6 +136,10 @@ class Bom {
   
   
   //helpers and extras
+  getEntryInstances( entry ){
+    this.bom[ entry ];
+    return 
+  }
   
   getPartByName( partName ){
     var res = this.bom.find( entry => entry.name === partName );
@@ -173,6 +174,40 @@ class Bom {
     return false;
   }
   
+  /*get all instances matching xxx*/
+  lookUpInstanceRefs( bomEntriesIdx, bomEntryInstancesIdx, bom ){
+    var selectionCandidates = [];
+    for(var i=0; i<bomEntriesIdx.length;i++)
+    {
+      var partIndex = bomEntriesIdx[i];
+      var instIndex = -1;//TODO implement
+      if( bomEntryInstancesIdx && bomEntryInstancesIdx[partIndex] && bomEntryInstancesIdx[partIndex].length > 0 )
+      {
+        instIndex = 1;
+      }
+      
+      var instances = this.bomMgr.getEntryInstances( );
+      if(! bom[ partIndex ] ) continue;
+      if(  bom[ partIndex ]._instances.length == 0 ) continue;
+      
+      if( instIndex == -1 ) //-1 means: select all
+      {
+        selectionCandidates = selectionCandidates.concat( bom[ partIndex ]._instances );
+      }
+      else{
+      
+        for(var j=0; j< bomEntryInstancesIdx[ partIndex ].length;j++)
+        {
+          selectionCandidates.push( bomEntryInstancesIdx[ partIndex ][j] )
+        }
+        //var selectionCandidate = bom[ partIndex ]._instances[ instIndex ];
+        //selectionCandidates.push( selectionCandidate )
+      }
+    }
+    return selectionCandidates;
+  }
+  
+  
   /*inject an empty entry */
   addEmtpyEntry( partName, description ){
       partIndex = this.bom.length-1;
@@ -201,9 +236,7 @@ class Bom {
     this._unRegisterInstance( partId, instance );
     this._registerInstance( partId, instance );
   }
-  
 }
-
 
 //object mixin testing
 /*
@@ -213,4 +246,4 @@ Object.assign(Bom.prototype, {
     }
 });*/
 
-export { Bom };
+export default Bom ;
