@@ -1,25 +1,34 @@
-import { Part } from "./Part";
-import { PartRegistry } from "./PartRegistry";
-import { Bom } from "./bom/Bom";
-import { Assembly } from "./Assembly";
-import { Design } from "./design/Design";
+import Part from "./Part"
+import PartRegistry from "./PartRegistry"
+import Bom from "./bom/Bom"
+import Assembly from "./Assembly"
+import Design from "./design/Design"
 
-import { TestApi } from "./testApi/testApi"
+import TestApi from "./testApi/testApi"
 
-import { generateUUID, hashCode, nameCleanup } from "./utils";
+import { generateUUID, hashCode, nameCleanup } from "./utils"
 
+import co from "co"
 
-import { co } from "co";
+//import logger from './utils/log'
+let log = {}//logger("Jam-Root");
+//log.setLevel("info");
+log.info = function(bla){console.info(bla)}
+log.warn = function(bla){console.warn(bla)}
+log.error = function(bla){console.error(bla)}
+
 
 //TODO:remove
-import { ThicknessAnnotation } from "./annotations/ThicknessAnnot.js"
+//import { ThicknessAnnotation } from "./annotations/ThicknessAnnot.js"
 
 
 class Kernel{
-  constructor(){
+  constructor(stateIn={}){
+    //stateIn is just a hack for now
+    this.stateIn = stateIn;
+
     //FIXME: horrible temp hack
-    this.co = co;
-    this.ThicknessAnnotation = ThicknessAnnotation;
+    //this.ThicknessAnnotation = ThicknessAnnotation;
   
     this.partRegistry = new PartRegistry();
     
@@ -55,6 +64,7 @@ class Kernel{
       
       //TODO: clean this up, just a hack
       this.dataApi.designName = this.activeDesign.name;
+      
       //console.log("docs of design updated", this.partRegistry._meshNameToPartTypeUId[ fileName ] );
       //TODO: store this resourceName/URI ==> uid on the server somewhere
       let meshNameToPartTypeUIdMapStr = JSON.stringify( this.partRegistry._meshNameToPartTypeUId );
@@ -72,6 +82,8 @@ class Kernel{
   
   /*
     get new instance of mesh for an entity that does not have a mesh YET
+    
+    TODO: change into getEntityMeshInstance
   */
   *getPartMeshInstance( entity ){
     let mesh = yield this.partRegistry.getPartTypeMesh( entity.typeUid );
@@ -134,7 +146,7 @@ class Kernel{
   
   /* removes an entity 
   WARNING: this is not the same as deleting one*/
-  removeEntity( entity ){
+  removeEntity( entity, cull=false ){
     this.activeAssembly.remove( entity );
     this.bom.unRegisterInstance( entity );
     
@@ -148,11 +160,21 @@ class Kernel{
     this.meshInstancesToEntitiesMap.delete( mesh );*/
   } 
   
+  /* set the visual representation of an entity (3d)
+  
+    @param templateParams: how the visual gets adapted to the entity
+  */
+  registerVisualTypeForEntityType( mesh, entity, templateParams )
+  {
+  
+  }
+  
   //helpers
+  /*retrieve all active entities*/
+
 
   /* is the given entity part of the active assembly?*/
   isEntityinActiveAssembly( entity ){
-    //this.entitiesToMeshInstancesMap.has( entity );
     return this.activeAssembly.isNodePresent( entity );
   }
   
@@ -168,6 +190,17 @@ class Kernel{
   }
   
   //////////////////////////
+  //FIXME: remove this, annotation specific
+  addAnnotation( annotation ){
+    this.annotations.push( annotation );
+    
+    //this.activeAssembly.push( annotation );
+    //this changes the assembly so ..save it
+    //this.saveActiveAssemblyState();
+  }
+  
+  
+  ////
   //FIXME after this point, very doubtfull to be kept in this form & shape
   saveDesign( design ){
     let design = this.activeDesign;
@@ -186,7 +219,7 @@ class Kernel{
     let design = new Design({name:designName,title:"Groovy design", description:"a classy design"});
     //FIXME horrible
     this.activeDesign.name = designName;
-    return;
+    return this.activeDesign;
   }
   
   saveActiveAssemblyState( ){
@@ -194,6 +227,16 @@ class Kernel{
     //localstorage
     let strForm = JSON.stringify( this.activeDesign.activeAssembly );
     localStorage.setItem("jam!-data-assembly", strForm );
+
+    /*this.setState({
+      design:{
+        //name:this.state.design.name,
+        activeAssembly: JSON.parse( strForm )
+      }
+    });*/
+
+    //this.stateIn.activeAssembly = JSON.parse( strForm ); 
+    console.log(this.stateIn)
   }
   
   loadActiveAssemblyState( callback ){
