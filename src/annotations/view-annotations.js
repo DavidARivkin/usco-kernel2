@@ -218,3 +218,91 @@
           }
         }
       },
+      
+      
+///REFACTORED
+//to map annotation to visual we need something like this somewhere
+/*{
+  start,
+  end,
+  startObject,
+  endObject
+}
+
+ie:
+start:annotation.start, 
+end:annotation.end,
+startObject:annotation.startObject,
+endObject:annotation.endObject
+
+
+case "thickness":
+                var annotationHelper = new ThicknessHelper({
+                  //TODO mix global settings with specifics nicely
+                  arrowColor:self.settings.visuals.arrowColor,
+                  textColor: self.settings.visuals.textColor,
+                  textBgColor:self.settings.visuals.textBgColor,
+                  fontSize: self.settings.visuals.fontSize,
+                  fontFace: self.settings.visuals.fontFace,
+                  fontWeight: self.settings.visuals.fontWeight,
+                  
+                  thickness: annotation.thickness, 
+                  entryPoint:annotation.entryPoint,
+                  exitPoint :annotation.exitPoint,
+                  object    :annotation.object
+                  });
+                  
+                annotation.object.add( annotationHelper );
+
+*/
+
+///
+let kernel;
+
+newAnnotations.map( function( annotation ){
+
+  //FIXME: absurd data conversion, should not be needed
+  for (var key in annotationData)
+  {
+    if(["position","normal","orientation","center","start","mid","end","entryPoint","exitPoint"].indexOf( key ) > -1 )
+    {
+      annotation[key] = new THREE.Vector3().fromArray( annotationData[key] );
+    }
+    else if(["object","startObject","midObject","endObject"].indexOf( key ) > -1 ){
+      if(!annotation._instances) annotation._instances = {};
+      annotation._instances[key] = annotationData[key];//push( annotationData[key] );
+    }
+    else{
+      annotation[key] = annotationData[key];
+    }
+  }
+
+  let annotationMesh = yield kernel.getEntityMeshInstance( annotation );
+  
+  //fetch all that we need for annotation's entities
+  let annotationEntities = annotation.entities;
+  
+  //TODO: wait until all the meshes of annotation entities have been loaded?
+  //only add annotation once ALL its dependency parts have been loaded
+  
+  /* operations applied to mesh to match the data
+    computeObject3DBoundingSphere( meshInstance, true );
+    //centerMesh( meshInstance ); //FIXME do not use the "global" centerMesh
+    
+    meshInstance.position.fromArray( entity.pos )
+    meshInstance.rotation.fromArray( entity.rot );
+    meshInstance.scale.fromArray(  entity.sca );
+    
+    self.threeJs.scenes["main"].add( meshInstance );
+    self._meshInjectPostProcess( meshInstance );
+  */
+
+});
+        
+removedAnnotation.map( function( annotation ) {
+
+  let mesh = kernel.getMeshOfEntity( annotation );
+  if( mesh.parent ) mesh.parent.remove( mesh );
+
+});
+          

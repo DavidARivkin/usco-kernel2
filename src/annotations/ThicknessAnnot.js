@@ -20,6 +20,9 @@ class ThicknessAnnotation extends Annotation{
     super( options );
     Object.assign( this, options );
     
+    //FIXME: not sure, this might allow hooking up things more easilly
+    this.entities = [];
+    this.entities.push( this.entity );
   }
   
   clone(){
