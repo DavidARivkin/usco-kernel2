@@ -1,21 +1,184 @@
+import Rx from 'rx'
+let Observable= Rx.Observable;
+let fromPromise = Observable.fromPromise;
 
+import logger from 'log-minim'
+
+let log = logger("testApi");
+log.setLevel("debug");
 
 class TestApi{
   constructor(){
     this.apiUri    = "http://localhost:3080/api/";
     this.designsUri = this.apiUri+"designs/";
     
+    this.rootUri    = "";
     this.designName = "";
+    this.assembliesFileName = "assemblies-simple.json"//"assemblies.json";
+    this.bomFileName        = "bom-simple.json";//"bom.json";
     //TODO: use our pre-exising "stores"
     this._designDocs = [];
+
+    //this.assetManager = undefined;
+    this.store = undefined;
   }
 
 
-  getUserDesign(user,options){
+  /*load all required elements of a design*/
+  loadFullDesign(designUri){
+    log.info("loading design from uri",designUri)
+    //check if design root exists
+    this.rootUri = designUri;
 
+    //fetch design.json
+    let $designMeta = this.loadDesignMeta();
+    
+    //fetch bom.json
+    let $bom = this.loadBom()
+
+    //fetch assemblies.json
+    let $assembly = this.loadAssemblyState();
+    
+    //fetch mapping type->uid
+    //this.loadMeshNameToPartTypeUId();
+
+    //fetch needed meshes
+    //let $meshes = this.loadMeshes();
+
+
+    function generateOutputData(designMeta, bom, assemblies){
+      //console.log(designMeta, bom, assemblies); 
+      let output = {}
+      output.design = designMeta;
+      output.bom = bom.bom;
+      output.assemblies = assemblies;
+      return output
+    }
+
+    function loadNeededMeshes(data){
+      console.log(data)
+      let {design, bom, assemblies} = data;
+      //we only care about the first assembly
+      let assembly = assemblies[0];
+      //for every item in the assembly, fetch the needed data
+
+      //ACTUALLY we cheat for now, get all items in the bom
+      let meshUrls = [];
+      bom.forEach(function(bomEntry){
+        if(bomEntry && bomEntry.implementations && bomEntry.implementations.default){
+          let meshFileUri = bomEntry.implementations.default;
+          meshUrls.push( meshFileUri )
+        }
+      })
+
+      let output = Object.assign({}, data);
+      output._neededMeshUrls = meshUrls;
+      //let meshNameToTypeUidUri = {};
+      //this.partRegistry._meshNameToPartTypeUId = meshNameToTypeUidUri;
+
+      //now that we have the list of files that we need, load those
+      
+      return output;
+    }
+
+    var source = Rx.Observable.combineLatest(
+        $designMeta,
+        $bom,
+        $assembly,
+        generateOutputData
+    )
+      .take(1)
+      .map(loadNeededMeshes);
+
+    return source;
+   
+  }
+
+
+
+  ///////////
+
+  /* load a given assembly*/
+  loadAssemblyState( ){
+    let assemblyUri = `${this.rootUri}/${this.assembliesFileName}`;
+
+    /*let defferred = store.read(fileOrFileName)
+    return defferred.promise.then(function(){
+      let strAssembly = JSON.parse( strAssembly );
+      return strAssembly
+    })*/
+
+    //NOTE : this is a cancellable q deferred, not a promise
+    let rawAssemblyPromise = this.store.read(assemblyUri).promise;
+    //self.activeDesign.activeAssembly = new Assembly( strAssembly );
+    let $rawData = fromPromise(rawAssemblyPromise);
+    return $rawData.map( data => JSON.parse( data) );
+  }
+
+
+  /*load the deign metadata*/
+  loadDesignMeta(){
+    let designUri = `${this.rootUri}/design.json`;
+    log.info("Loading design meta from ",designUri)
+
+    //NOTE : this is a cancellable q deferred, not a promise
+    let rawDesignMetaPromise = this.store.read(designUri).promise;
+    let $rawDesignMeta = fromPromise(rawDesignMetaPromise);
+    return $rawDesignMeta.map( data => JSON.parse( data) );
+  }
+
+  /*load the bill of materials*/
+  loadBom(){
+    let bomUri = `${this.rootUri}/${this.bomFileName}`;
+    log.info("Loading bom from ",bomUri)
+
+    //NOTE : this is a cancellable q deferred, not a promise
+    let rawBomPromise = this.store.read(bomUri).promise;
+    let $rawBom = fromPromise(rawBomPromise);
+    return $rawBom.map( data => JSON.parse( data) );
+  }
+
+  /*load meshName -> partUid mapping*/
+  loadMeshNameToPartTypeUId(){
+    let meshNameToTypeUidUri = `${this.rootUri}/bom.json`;
+
+    //NOTE : this is a cancellable q deferred, not a promise
+    let rawMappingPromise = this.store.read(bomUri).promise;
+    let $rawBom = fromPromise(rawBomPromise);
+    return $rawBom.map( data => JSON.parse( data) );
+  }
+
+  /*load meshes*/
+  loadMeshes(){
+    let bomUri = `${this.rootUri}/bom.json`;
+    log.info("Loading bom from ",bomUri)
+
+    //NOTE : this is a cancellable q deferred, not a promise
+    let rawBomPromise = this.store.read(bomUri).promise;
+    let $rawBom = fromPromise(rawBomPromise);
+    return $rawBom.map( data => JSON.parse( data) );
+
+    
+  }
+
+  //FIMXE : redundance with main app
+  loadMesh(uriOrData, options){
+    let resource = this.assetManager.load( uriOrData, {keepRawData:true, parsing:{useWorker:true,useBuffers:true} } );
+    var source = fromPromise(resource.deferred.promise);
+  }
+
+  /*save association between mesh Name and type uid*/
+  saveMeshNameToPartTypeUId(meshNameToPartTypeUId){
+    //TODO: store this resourceName/URI ==> uid on the server somewhere
+    let meshNameToPartTypeUIdMapStr = JSON.stringify( meshNameToPartTypeUId );
+    localStorage.setItem("jam!-meshNameToPartTypeUId", meshNameToPartTypeUIdMapStr );
+  }
+
+  /*fetch all of the designs of a given user*/
+  getUserDesigns(user,options){
 
   }
-  
+
   saveDesign( design, options ){
     console.log("saving design", design);
     //var co = require('co');
@@ -27,9 +190,7 @@ class TestApi{
      //TODO: should look more like this
     //let design = yield this.dataApi.loadDesign( uri , options ); 
     
-    //this.loadActiveAssemblyState( );
-    //now get back mapping of fileName to uid
-    let meshNameToPartTypeUId = localStorage.getItem("jam!-meshNameToPartTypeUId" );
+    meshNameToPartTypeUId = JSON.parse( meshNameToPartTypeUId );
     if( meshNameToPartTypeUId) {
       meshNameToPartTypeUId = JSON.parse( meshNameToPartTypeUId );
       this.partRegistry._meshNameToPartTypeUId = meshNameToPartTypeUId;
@@ -68,51 +229,6 @@ class TestApi{
   saveAssemblyState( ){
     let strForm = JSON.stringify( {assembly:this.activeDesign.activeAssembly} );
     
-    let apiUri = "http://localhost:3080/api/";
-    let uri = `${apiUri}designs/${this.activeDesign.name}/assemblies/0`;
-    var xhr = new XMLHttpRequest();
-    // Open the connection.
-    xhr.open('POST', uri, true);
-    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        // File(s) uploaded.
-        console.log("assembly uploaded ok");
-      } else {
-        console.error('An error occurred!');
-      }
-    };
-    xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          var percentage = Math.round((e.loaded * 100) / e.total);
-          console.log("upload in progress", percentage);
-      }
-    }, false);
-    
-    xhr.send(strForm);
-  }
-  
-  loadAssemblyState( ){
-    let self = this;
-    let apiUri = "http://localhost:3080/api/";
-    let uri = `${apiUri}designs/${this.activeDesign.name}/assemblies/0`;
-    
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', uri, true);
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        console.log("fetched ok");
-        console.log(this.responseText);
-        let strAssembly = this.responseText;
-        strAssembly = JSON.parse( strAssembly );
-        self.activeDesign.activeAssembly = new Assembly( strAssembly );
-        if(callback) callback();
-        
-      } else {
-        console.error('An error occurred!');
-      }
-    };
-    xhr.send();
   }
   
   /* temporary only */
@@ -120,10 +236,12 @@ class TestApi{
     console.log("saving custom entity types",typesData);
   } 
   
-  
   //FIXME: move this to asset manager/use it ??
   saveFile( path, data ){
     let fileName = path;
+
+    log.info("saving file to",path);
+    return
     //only upload if we do not have it
     //TODO do checksum etc
     if( this._designDocs.indexOf( fileName ) > -1 ) return;

@@ -9,13 +9,16 @@ import TestApi from "./testApi/testApi"
 import { generateUUID, hashCode, nameCleanup } from "./utils"
 
 import co from "co"
+import Q from 'q'
 
-//import logger from './utils/log'
-let log = {}//logger("Jam-Root");
-//log.setLevel("info");
-log.info = function(bla){console.info(bla)}
-log.warn = function(bla){console.warn(bla)}
-log.error = function(bla){console.error(bla)}
+import Rx from 'rx'
+let Observable= Rx.Observable;
+let fromPromise = Observable.fromPromise;
+
+import logger from 'log-minim'
+
+let log = logger("kernel");
+log.setLevel("debug");
 
 
 //TODO:remove
@@ -51,6 +54,10 @@ class Kernel{
     
     //TODO:remove, this is temporary
     this.activeAnnotations = [];
+
+
+    //not sure
+    this.assetManager = undefined;
   }
 
   
@@ -62,13 +69,9 @@ class Kernel{
       let resource = options.resource;
       console.log("resource", resource);
       
-      //TODO: clean this up, just a hack
-      this.dataApi.designName = this.activeDesign.name;
-      
-      //console.log("docs of design updated", this.partRegistry._meshNameToPartTypeUId[ fileName ] );
-      //TODO: store this resourceName/URI ==> uid on the server somewhere
-      let meshNameToPartTypeUIdMapStr = JSON.stringify( this.partRegistry._meshNameToPartTypeUId );
-      localStorage.setItem("jam!-meshNameToPartTypeUId", meshNameToPartTypeUIdMapStr );
+      //saving mapping of meshNameToTypeUid
+      this.dataApi.saveMeshNameToPartTypeUId(this.partRegistry._meshNameToPartTypeUId);
+
       //we have a mesh with a resource, store the file
       this.dataApi.saveFile( resource.name, resource._file );
     }
@@ -79,6 +82,12 @@ class Kernel{
     
     return partKlass;
   }
+
+  /*TODO: old , cleanup
+    //TODO: clean this up, just a hack
+      this.dataApi.designName = this.activeDesign.name;
+
+  */
   
   /*
     get new instance of mesh for an entity that does not have a mesh YET
@@ -201,6 +210,44 @@ class Kernel{
   
   
   ////
+  //main ser/unserialization api 
+  loadDesign( uri, options ){
+    let deferred = Q.defer();
+    let self     = this;
+    let $designData = this.dataApi.loadFullDesign(uri,options);
+
+    function getMeshesToLoad(data){
+      return data._neededMeshUrls;
+    }
+    function loadMeshes(uriOrData){
+      let meshLoadParams= {
+        parentUri:uri[0],
+        keepRawData:true, 
+        parsing:{useWorker:true,useBuffers:true} 
+      }
+      //FIXME: big hACK!!
+      uriOrData = "./"+uriOrData
+      let resource = self.assetManager.load( uriOrData, meshLoadParams );
+      var $mesh = fromPromise(resource.deferred.promise);
+    }
+
+    $designData
+      .take(1)
+      .map(getMeshesToLoad)
+      .flatMap(Rx.Observable.from)
+      .map(loadMeshes)
+      .subscribe(
+      function (x) { console.log('onNext:', x); },
+      function (e) { console.log('onError: %s', e); },
+      function () { console.log('onCompleted'); }
+    );
+
+
+
+    return deferred.promise;
+  }
+
+
   //FIXME after this point, very doubtfull to be kept in this form & shape
   saveDesign( design ){
     let design = this.activeDesign;
@@ -211,7 +258,7 @@ class Kernel{
   
   //returns a fake/ testing design
   //TODO: impletement, use at least promises, or better generators/ yield
-  loadDesign( uri, options, callback ){
+  _loadDesign( uri, options, callback ){
     console.log("loading design from", uri);
     //FIXME: horrible
     let designName = uri.split("/").pop();

@@ -40,9 +40,25 @@ var hashCodeFromString = function(s){
   return s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);              
 }
 
+function camelCase (string) {
+    return string.replace( /-([a-z])/ig, function( all, letter ) {
+        return letter.toUpperCase();
+    });
+}
+
+function camelCase2 (string) {
+    return string.replace( /-([a-z])/ig, function( all, letter ) {
+        return letter.toUpperCase();
+    });
+}
+
+//TODO: do this better
 var nameCleanup = function( name ){
    let cName = name.substr(0, name.lastIndexOf('.')); 
-   cName = cName.replace("_","");
+   //cName = cName.replace(/_/g, '').replace(/-/g, '');
+   cName = camelCase(cName);
+   cName = camelCase2(cName);
+   //cName = cName.replace("_","").replace("-","");
    return cName;
 }
 
