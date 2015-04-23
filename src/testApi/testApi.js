@@ -14,7 +14,7 @@ class TestApi{
     
     this.rootUri    = "";
     this.designName = "";
-    this.assembliesFileName = "assemblies-simple.json"//"assemblies.json";
+    this.assembliesFileName = "assemblies.json";//"assemblies-simple.json"//
     this.bomFileName        = "bom-simple.json";//"bom.json";
     //TODO: use our pre-exising "stores"
     this._designDocs = [];
@@ -62,8 +62,8 @@ class TestApi{
       let assembly = assemblies[0];
       //for every item in the assembly, fetch the needed data
 
-      //ACTUALLY we cheat for now, get all items in the bom
-      let meshUrls = [];
+      let output = Object.assign({}, data);
+      /*let meshUrls = [];
       bom.forEach(function(bomEntry){
         if(bomEntry && bomEntry.implementations && bomEntry.implementations.default){
           let meshFileUri = bomEntry.implementations.default;
@@ -71,13 +71,12 @@ class TestApi{
         }
       })
 
-      let output = Object.assign({}, data);
-      output._neededMeshUrls = meshUrls;
+      
+      output._neededMeshUrls = meshUrls;*/
       //let meshNameToTypeUidUri = {};
       //this.partRegistry._meshNameToPartTypeUId = meshNameToTypeUidUri;
 
       //now that we have the list of files that we need, load those
-      
       return output;
     }
 
