@@ -55,8 +55,8 @@ class TestApi{
       return output
     }
 
-    function loadNeededMeshes(data){
-      console.log(data)
+    function getNeededMeshesData(data){
+      //console.log(data)
       let {design, bom, assemblies} = data;
       //we only care about the first assembly
       let assembly = assemblies[0];
@@ -88,7 +88,7 @@ class TestApi{
         generateOutputData
     )
       .take(1)
-      .map(loadNeededMeshes);
+      .map(getNeededMeshesData);
 
     return source;
    

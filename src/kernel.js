@@ -24,6 +24,10 @@ log.setLevel("debug");
 //TODO:remove
 //import { ThicknessAnnotation } from "./annotations/ThicknessAnnot.js"
 
+import postProcessMesh from './utils/postProcessMesh'
+import helpers         from 'glView-helpers'
+let centerMesh         = helpers.mesthTools.centerMesh;
+
 
 class Kernel{
   constructor(stateIn={}){
@@ -76,7 +80,7 @@ class Kernel{
       this.dataApi.saveFile( resource.name, resource._file );
     }
     //save part types??
-    this.dataApi.saveCustomEntityTypes( this.partRegistry._customPartTypesMeta );
+    //this.dataApi.saveCustomEntityTypes( this.partRegistry._customPartTypesMeta );
     
     this.bom.registerPartType( partKlass );
     
@@ -96,6 +100,7 @@ class Kernel{
   */
   *getPartMeshInstance( entity ){
     let mesh = yield this.partRegistry.getPartTypeMesh( entity.typeUid );
+    //log.error("entity",entity)
     //TODO: perhaps do this differently: ie return a wrapper mesh with just a bounding
     //box and "fill in"/stream in the mesh later ?
     this.registerEntityMeshRel( entity, mesh );
@@ -215,11 +220,19 @@ class Kernel{
     let deferred = Q.defer();
     let self     = this;
     let $designData = this.dataApi.loadFullDesign(uri,options);
+    $designData =  $designData.take(1).share();
 
-    function getMeshesToLoad(data){
-      return data._neededMeshUrls;
+    function logNext( next ){
+      log.info( next )
     }
-    function loadMeshes(uriOrData){
+    function logError( err){
+      log.error(err)
+    }
+    function logDone( data) {
+      log.info("DONE",data)
+    }
+
+    function loadMesh(uriOrData){
       let meshLoadParams= {
         parentUri:uri[0],
         keepRawData:true, 
@@ -229,22 +242,267 @@ class Kernel{
       uriOrData = "./"+uriOrData
       let resource = self.assetManager.load( uriOrData, meshLoadParams );
       var $mesh = fromPromise(resource.deferred.promise);
+
+      function extractMeshFromResource(resource) { return resource.data}
+       
+      let mesh = $mesh.take(1).map(extractMeshFromResource).map(postProcessMesh)
+      return mesh;
     }
 
-    $designData
-      .take(1)
+    function loadMeshAndRegisterItAsTemplate(uriOrData, typeUid){
+      
+      let meshLoadParams= {
+        parentUri:uri[0],
+        keepRawData:true, 
+        parsing:{useWorker:true,useBuffers:true} 
+      }
+      //FIXME: big hACK!!
+      uriOrData = "./"+uriOrData
+      let resource = self.assetManager.load( uriOrData, meshLoadParams );
+      var $mesh = fromPromise(resource.deferred.promise);
+
+      function extractMeshFromResource(resource) { 
+        return resource.data
+      }
+      function registerMeshAsTypeTemplate(mesh){
+        //add mesh as template for its type
+        console.log("setting ",mesh,"as template of ",typeUid)
+        self.partRegistry.addTemplateMeshForPartType( mesh.clone(), typeUid );
+        return mesh;
+      }
+      let $registeredMesh = $mesh
+        .map(extractMeshFromResource)
+        .map(postProcessMesh)
+        .map(centerMesh)
+        .map(registerMeshAsTypeTemplate)
+        .take(1);
+      //.subscribe(logNext,logError,logDone)
+      return $registeredMesh
+    }
+
+    return $designData.map(function(data)
+    {
+
+      let {design, bom, assemblies} = data;
+
+      self.activeDesign = new Design(design);
+      self.activeDesign.activeAssembly = new Assembly( assemblies[0] );
+
+      self.activeAssembly = self.activeDesign.activeAssembly;
+
+      //get the list of typeUids
+      let neededTypeUids = new Set();
+      self.activeDesign.activeAssembly.children.map(function(child){
+        neededTypeUids.add( child.typeUid)
+      })
+      //now fetch the uris of the corresponding bom entry implems
+      let uris = [];
+      let combos = {};
+      let registrations = [];
+      bom.map(function(bomEntry){
+        let key = bomEntry.description.split("part ").pop();
+        let typeUid = parseInt(key)
+        if(neededTypeUids.has(typeUid)){
+          let binUri = bomEntry.implementations.default;
+          //console.log("PLEASE LOAD",bomEntry.implementations.default);
+          combos[typeUid] = binUri;
+
+          //DO THE LOADINNG!!
+          registrations.push( loadMeshAndRegisterItAsTemplate(binUri,typeUid) );
+        }
+      })
+      //console.log("PLEASE LOAD",combos);
+      //return Rx.Observable.fromArray(registrations)
+      return registrations;
+    })
+    .flatMap(Rx.Observable.from)
+    .mergeAll();
+
+    return;
+
+    ///////////////////////////////////
+    //deal with all meshes (fetch etc)
+    function getMeshesToLoad(data){
+      return data._neededMeshUrls;
+    }
+
+
+    
+    let $meshes = $designData
       .map(getMeshesToLoad)
       .flatMap(Rx.Observable.from)
-      .map(loadMeshes)
-      .subscribe(
-      function (x) { console.log('onNext:', x); },
-      function (e) { console.log('onError: %s', e); },
-      function () { console.log('onCompleted'); }
-    );
+      .map(loadMesh);
+      //.subscribe( logNext, logError );
+
+    //instanciate design
+    function getDesignData(data){
+      return data.design;
+    }
+    function createDesign(designData){
+      let design = new Design(designData);
+      return design;
+    }
+
+    let $design = $designData
+      .map(getDesignData)
+      .map(createDesign);
+      //.subscribe( logNext, logError );
+    
+
+    //instanciate assembly
+    function getAssemblyData(data){console.log(data);return data.assemblies[0]}
+
+    function reloadActiveAssembly(assemblyData){
+
+      /*log.info("assemblyData",assemblyData);
+      let typeUids = new Set();
+      assemblyData.children.map(function(child){
+        typeUids.add( child.typeUid );
+      });
+
+      log.info("typeUids",typeUids)*/
+      /*let map = {
+        1138741168:"63d1c05f-1fa0-4962-b158-c38da15a7c16", 
+        342879467:"609b1001-5c8e-46d7-8132-4de4600921df", 
+        -1220929317:"7cdab112-b6ff-4d88-bcc7-6832bf254809", 
+        -1266603563:"06d9f700-5669-4711-bea8-a5f20703ae08"
+      }*/
+
+      return self.activeDesign.activeAssembly = new Assembly( assemblyData );
+    }
+
+    let $assembly = $designData
+      .map(getAssemblyData)
+      .map(reloadActiveAssembly);
+      //.subscribe( logNext, logError );
 
 
+    //deal with bom
+    function getBomData(data){return data.bom}
+
+    function extractBomInfos(bomData){
+      let data = {}
+      bomData.map(function(bomEntry){
+        log.info(bomEntry)
+        let key = bomEntry.description.split("part ").pop();
+        data[key]= bomEntry.id;
+
+        if(bomEntry.impletementation){
+          
+          if(bomEntry.implementations && bomEntry.implementations.default){
+            let meshFileUri = bomEntry.implementations.default;
+          }
+          let visualKey = undefined;
+          let bomId = bomEntry.id;
+
+        }
+      })
+      
+      log.info("BOMDATA",data)
+      return bomData
+    }
+
+    let $bom = $designData
+      .map(getBomData)
+      .map(extractBomInfos);
+      //.subscribe( logNext, logError );
+
+    /////do final treatment
+    function generateResult(assembly,bom, meshes){
+      log.info(assembly, bom, meshes)
+      return ""
+    }
+
+    var source = Rx.Observable.combineLatest(
+        $assembly,
+        $bom,
+        $meshes.concatAll(),
+        generateResult
+    ).subscribe( logNext, logError );
+
+
+    //return source;
 
     return deferred.promise;
+  }
+
+  loadMesh(uriOrData, options){
+     const DEFAULTS={
+    }
+    var options     = options || {};
+    var display     = options.display === undefined ? true: options.display;
+    var addToAssembly= options.addToAssembly === undefined ? true: options.addToAssembly;
+    var keepRawData = options.keepRawData === undefined ? true: options.keepRawData;
+    
+    if(!uriOrData) throw new Error("no uri or data to load!");
+
+    let self = this;
+    let resource = this.assetManager.load( uriOrData, {keepRawData:true, parsing:{useWorker:true,useBuffers:true} } );
+
+    var source = fromPromise(resource.deferred.promise);
+
+    let logNext  = function( next ){
+      log.info( next )
+    }
+    let logError = function( err){
+      log.error(err)
+    }
+
+    let handleLoadError = function( err ){
+       log.error("failed to load resource", err, resource.error);
+       //do not keep error message on screen for too long, remove it after a while
+       setTimeout(cleanupResource, self.dismissalTimeOnError);
+       return resource;
+    }
+    let cleanupResource = function( resource ){
+      log.info("cleaning up resources")
+      self.assetManager.dismissResource( resource );
+    }
+
+    let register = function( shape ){
+      //part type registration etc
+      //we are registering a yet-uknown Part's type, getting back an instance of that type
+      let partKlass    = self.kernel.registerPartType( null, null, shape, {name:resource.name, resource:resource} );
+      let partInstance = undefined;
+      if( addToAssembly ) {
+        partInstance = self.kernel.makePartTypeInstance( partKlass );
+        self.kernel.registerPartInstance( partInstance );
+      }
+
+      //FIXME: remove, this is just for testing
+      self.addEntityType( partKlass)
+      self.addEntityInstance(partInstance)
+      //we do not return the shape since that becomes the "reference shape", not the
+      //one that will be shown
+      return {klass:partKlass,instance:partInstance};
+    }
+
+    let showIt = function( klassAndInstance ){
+      if( display || addToAssembly ){
+        //klassAndInstance.instance._selected = true;//SETTIN STATE !! not good like this
+        self._tempForceDataUpdate();
+      }
+
+      return klassAndInstance
+    }
+
+    let mainProc = source
+      .map( postProcessMesh )
+      .map( centerMesh )
+      .share();
+
+    mainProc
+      .map( register )
+      .map( showIt )
+      .map( function(klassAndInstance){
+        //klassAndInstance.instance.pos[2]+=30;
+        return klassAndInstance;
+      })
+        .catch(handleLoadError)
+        //.timeout(100,cleanupResource)
+        .subscribe(logNext,logError);
+
+    mainProc.subscribe(logNext,logError);
   }
 
 
@@ -284,12 +542,6 @@ class Kernel{
 
     //this.stateIn.activeAssembly = JSON.parse( strForm ); 
     console.log(this.stateIn)
-  }
-  
-  loadActiveAssemblyState( callback ){
-    //local storage
-    let strAssembly = localStorage.getItem( "jam!-data-assembly" );
-    this.activeDesign.activeAssembly = new Assembly( strAssembly );
   }
   
   
