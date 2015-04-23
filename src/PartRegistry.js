@@ -45,7 +45,7 @@ class PartRegistry{
   }
   
   /* 
-  register a instance's 3d mesh, 
+  register a types's 3d mesh, 
   
     @returns: a class
   */
@@ -138,6 +138,7 @@ class PartRegistry{
     klass.prototype.typeName = klassName;
     klass.prototype.typeUid = typeUid;
     
+    //what do we need this for ???
     this._customPartTypesMeta[ typeUid ] = { typeName:klassName, typeUid:typeUid };
     
     

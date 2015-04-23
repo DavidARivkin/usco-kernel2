@@ -15,7 +15,7 @@ class Design{
       url:"",
       authors:[ ],//{"name":"otherGirl","url": "www.mysite.com","email":"gg@bar.baz"}
       tags:[],
-      licences:["MIT"],
+      licenses:["MIT"],
       meta:{state:"design"}
     };
     this.DEFAULTS = DEFAULTS;

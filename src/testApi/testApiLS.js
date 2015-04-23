@@ -11,3 +11,11 @@
     meshNameToPartTypeUId = JSON.parse( meshNameToPartTypeUId );
     return meshNameToPartTypeUId;
   }
+
+  loadActiveAssemblyState( callback ){
+    //local storage
+    let strAssembly = localStorage.getItem( "jam!-data-assembly" );
+    this.activeDesign.activeAssembly = new Assembly( strAssembly );
+  }
+  
+  
