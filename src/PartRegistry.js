@@ -163,8 +163,9 @@ class PartRegistry{
   /* wrapper abstracting whether one needs to wait for the part's mesh or not
   */
   *getPartTypeMesh( typeUid, original=false ){
+    if(!typeUid) throw new Error("no typeUid specified");
     if( ! this._partTypeMeshTemplates[ typeUid ] && ! this._partTypeMeshWaiters[ typeUid ] ){
-      throw new Error("No matching mesh found");
+      throw new Error(`No matching mesh found for type : ${typeUid}`);
     }
     
     if( ! this._partTypeMeshWaiters[ typeUid ] ) {
