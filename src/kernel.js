@@ -231,7 +231,6 @@ class Kernel{
     function logDone( data) {
       log.info("DONE",data)
     }
-
     
     function loadMeshAndRegisterItAsTemplate(uriOrData, typeUid){
       
@@ -250,7 +249,7 @@ class Kernel{
       }
       function registerMeshAsTypeTemplate(mesh){
         //add mesh as template for its type
-        console.log("setting ",mesh,"as template of ",typeUid)
+        log.info("setting ",mesh,"as template of ",typeUid)
         self.partRegistry.addTemplateMeshForPartType( mesh.clone(), typeUid );
         return mesh;
       }
@@ -269,9 +268,6 @@ class Kernel{
 
       let {design, bom, assemblies} = data;
 
-      log.info(bom)
-      log.info(assemblies[0])
-
       self.activeDesign = new Design(design);
       self.activeDesign.activeAssembly = new Assembly( assemblies[0] );
 
@@ -280,7 +276,7 @@ class Kernel{
       //get the list of typeUids
       let neededTypeUids = new Set();
       self.activeDesign.activeAssembly.children.map(function(child){
-        neededTypeUids.add( child.typeUid)
+        neededTypeUids.add( child.typeUid )
       })
 
       log.info(neededTypeUids)
@@ -289,9 +285,16 @@ class Kernel{
       let uris = [];
       let combos = {};
       let registrations = [];
+
+      //let tmpOutputBom = Object.assign([],bom);
+      //let tmpOutputAssembly = Object.assign({},assemblies[0])
+
+      let index = 0;
       bom.map(function(bomEntry){
-        let key = bomEntry.description.split("part ").pop();
-        let typeUid = parseInt(key)
+        //let key = bomEntry.description.split("part ").pop();
+        //let typeUid = parseInt(key)
+        let typeUid = bomEntry.id;
+
         if(neededTypeUids.has(typeUid)){
           let binUri = bomEntry.implementations.default;
           //console.log("PLEASE LOAD",bomEntry.implementations.default);
@@ -300,7 +303,52 @@ class Kernel{
           //DO THE LOADINNG!!
           registrations.push( loadMeshAndRegisterItAsTemplate( binUri, typeUid ) );
         }
+
+        //tmpOutputBom[index].id = typeUid;
+        //index +=1;
       })
+
+      /*
+      //console.log("OUTPUTBOM",bom, tmpOutputBom)
+      //console.log("OUTPUTASSEMBLY",tmpOutputAssembly)
+      function extractTypeIdFromDescription(inputDescription){
+        let key = bomEntry.description.split("part ").pop();
+        let typeUid = parseInt(key);
+        return typeUid;
+      }
+
+      function descriptionFormatter(inputDescription){
+        let outputDescription = inputDescription.split("part ").shift();
+        return outputDescription.trim();
+      }
+
+      //generate new outputs with new uids
+      function generateNewTypeUidMapping( inputBom, inputAssembly, idGenerator=generateUUID){
+        let outBom      = Object.assign([],inputBom);
+        let outAssembly = Object.assign({},inputAssembly);
+
+        outBom.map(function(bomEntry){
+          let originalTypeId = bomEntry.id;
+          let newTypeId      = idGenerator();
+          bomEntry.id = newTypeId;
+          bomEntry.description = descriptionFormatter(bomEntry.description);
+          
+          outAssembly.children.map(function(assemblyEntry){
+            if(assemblyEntry.typeUid == originalTypeId){
+              assemblyEntry.typeUid = newTypeId;
+            }
+          });
+
+        })  
+
+        let outAssemblies = [outAssembly];
+        console.log("OUTPUTBOM",JSON.stringify(outBom) );
+        console.log("OUTPUTASSEMBLY",JSON.stringify( outAssemblies) );
+  
+      }
+      generateNewTypeUidMapping( tmpOutputBom, tmpOutputAssembly )*/
+
+
       //console.log("PLEASE LOAD",combos);
       //return Rx.Observable.fromArray(registrations)
       return registrations;

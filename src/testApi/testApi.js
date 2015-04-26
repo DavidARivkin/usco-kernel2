@@ -14,8 +14,8 @@ class TestApi{
     
     this.rootUri    = "";
     this.designName = "";
-    this.assembliesFileName = "assemblies.json";//"assemblies-simple.json"//
-    this.bomFileName        = "bom-simple.json";//"bom.json";
+    this.assembliesFileName = "assemblies.json";//"assemblies_old.json";//"assemblies-simple.json"//
+    this.bomFileName        = "bom.json";//"bom_old.json"//"bom.json";
     //TODO: use our pre-exising "stores"
     this._designDocs = [];
 
@@ -50,7 +50,7 @@ class TestApi{
       //console.log(designMeta, bom, assemblies); 
       let output = {}
       output.design = designMeta;
-      output.bom = bom.bom;
+      output.bom = bom;
       output.assemblies = assemblies;
       return output
     }

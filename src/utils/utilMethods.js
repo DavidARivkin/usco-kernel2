@@ -10,6 +10,10 @@ function logError( err){
   log.error(err)
 }
 
+function logDone( data) {
+      log.info("DONE",data)
+    }
+
 ///
 /*validator for design title: why is this here*/
 let validateTitle = function( inputTile ){
