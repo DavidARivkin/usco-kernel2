@@ -13,7 +13,8 @@ class Part extends Entity{
       color : "#FFFFFFFF",
       pos: [0,0,0],
       rot: [0,0,0],
-      sca: [1,1,1]
+      sca: [1,1,1],
+      bbox:{min:[0,0,0],max:[0,0,0]}
     }
     //this.DEFAULTS = DEFAULTS;
     let options = Object.assign({}, DEFAULTS, options); 
