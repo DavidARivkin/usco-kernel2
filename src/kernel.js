@@ -140,10 +140,10 @@ class Kernel{
     //FIXME: do this correctly
     let doNotCopy = ["iuid","name"];
     let onlyCopy = ["pos","rot","sca"];
-    for(key in originalEntity ){
+    for(let key in originalEntity ){
       console.log("key",key);
       if( onlyCopy.indexOf( key ) > -1 ){
-        dupe[key] = Object.assign({}, originalEntity[key] );
+        dupe[key] = Object.assign([], originalEntity[key] );//FIXME: object vs array
       }
     }
     
