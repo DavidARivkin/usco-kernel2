@@ -276,7 +276,7 @@ class Kernel{
       //get the list of typeUids
       let neededTypeUids = new Set();
       self.activeDesign.activeAssembly.children.map(function(child){
-        neededTypeUids.add( child.typeUid )
+        neededTypeUids.add( child.typeUid );
       })
 
       log.info(neededTypeUids)
@@ -304,9 +304,20 @@ class Kernel{
           registrations.push( loadMeshAndRegisterItAsTemplate( binUri, typeUid ) );
         }
 
-        //tmpOutputBom[index].id = typeUid;
-        //index +=1;
+        //FIXME:hack
+        console.log("here")
+        let partKlass = {typeUid:typeUid};
+        partKlass.prototype = {typeName:"foo",typeUid:typeUid}
+        self.bom.registerPartType( partKlass );
       })
+
+      //FIXME: ugh, why do we need to re-iterate?
+      self.activeDesign.activeAssembly.children.map(function(child){
+        try{
+        self.bom.registerInstance( child, {} );
+        }catch(error){}
+      })
+      
 
       /*
       //console.log("OUTPUTBOM",bom, tmpOutputBom)
