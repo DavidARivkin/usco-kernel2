@@ -71,8 +71,9 @@ class PartRegistry{
       //create ...
       partKlass = this.makeNamedPartKlass( cName, typeUid );
       //& register class
-      this.partTypes[ typeUid ]     = partKlass;
-      this.partTypesByName[ cName ] = partKlass;
+      this.registerPartType( partKlass, cName, typeUid );
+      //this.partTypes[ typeUid ]     = partKlass;
+      //this.partTypesByName[ cName ] = partKlass;
       
       //TODO: move this to a visual specific part of the code
       this._meshNameToPartTypeUId[ meshName ] = typeUid;
@@ -89,8 +90,10 @@ class PartRegistry{
   
   /* register a part type
   */
-  registerPartType( partKlass, typeName ){
+  registerPartType( partKlass, typeName, typeUid ){
       if( !partKlass ) throw new Error("no part type specified, cannot register part type");
+      this.partTypes[ typeUid ]     = partKlass;
+      this.partTypesByName[ typeName ] = partKlass;
   }
   
   /* register a part type's (parametric) source

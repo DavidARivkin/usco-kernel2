@@ -305,10 +305,18 @@ class Kernel{
         }
 
         //FIXME:hack
-        console.log("here")
+        console.log("here", bomEntry)
         let partKlass = {typeUid:typeUid};
-        partKlass.prototype = {typeName:"foo",typeUid:typeUid}
-        self.bom.registerPartType( partKlass );
+        let typeName  = "foo"+index;
+        partKlass.prototype = {typeName:typeName,typeUid:typeUid}
+        
+        let klass = self.partRegistry.makeNamedPartKlass( typeName, typeUid );
+        self.partRegistry.registerPartType( klass, typeName, typeUid );
+        self.bom.registerPartType( klass );
+
+        //self.registerPartType(undefined, undefined, undefined, {name:bomEntry.title});
+        //part=undefined, source=undefined, mesh=undefined
+        //null, null, shape, {name:resource.name, resource:resource}
       })
 
       //FIXME: ugh, why do we need to re-iterate?
