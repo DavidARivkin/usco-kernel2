@@ -7,6 +7,66 @@ import logger from 'log-minim'
 let log = logger("testApi");
 log.setLevel("debug");
 
+
+function jsonToFormData(jsonData){
+  let jsonData = JSON.parse( JSON.stringify( jsonData ) );
+  let formData = new FormData();
+  for(let fieldName in jsonData){
+    formData.append(fieldName, jsonData[fieldName]);
+  }
+  return formData;
+}
+
+//FIXME: move this to XHR/Whatver store
+function XHRPatch(uri, data, callback, errback){
+  var xhr = new XMLHttpRequest();
+  let data = JSON.stringify(data);
+
+    // Open the connection.
+    xhr.open('POST', uri, true);
+    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        // File(s) uploaded.
+        console.log("data updated ok");
+      } else {
+        console.error('An error occurred!');
+      }
+    };
+    xhr.upload.addEventListener("progress", function(e) {
+        if (e.lengthComputable) {
+          var percentage = Math.round((e.loaded * 100) / e.total);
+          console.log("upload in progress", percentage);
+      }
+    }, false);
+    
+    xhr.send(data);
+}
+
+
+function XHRPOST(uri, data){
+  var xhr = new XMLHttpRequest();
+    // Open the connection.
+    xhr.open('POST', uri, true);
+    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        // File(s) uploaded.
+        console.log("data updated ok");
+      } else {
+        console.error('An error occurred!');
+      }
+    };
+    xhr.upload.addEventListener("progress", function(e) {
+        if (e.lengthComputable) {
+          var percentage = Math.round((e.loaded * 100) / e.total);
+          console.log("upload in progress", percentage);
+      }
+    }, false);
+    
+    xhr.send(data);
+}
+
 class TestApi{
   constructor(){
     this.apiUri    = "http://localhost:3080/api/";
@@ -126,6 +186,31 @@ class TestApi{
     return $rawDesignMeta.map( data => JSON.parse( data) );
   }
 
+  /*save the design metadata*/
+  saveDesignMeta(designMeta){
+    let designsUri = "http://jamapi.youmagine.com/api/v1/designs/test";
+    let designMeta = {name:"bla"}
+    log.info("Saving design meta to ", designsUri, "data",designMeta)
+
+    //FIXME/ this should be internal in store
+    /*let $designMeta = fromPromise(this.store.read(designsUri).promise);
+    $designMeta.subscribe(function(data){
+      console.log("got data",data)
+    },
+    function(){},function(){})*/
+    //if the read succeeds : design exists, we can PATCH else POST
+    //this.store.write = XHRPatch;
+    //this.store.write(designsUri, designMeta)
+
+    
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("PATCH", designsUri);
+    //xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    let outData = jsonToFormData(designMeta);
+    xmlhttp.send(outData);
+
+  }
+
   /*load the bill of materials*/
   loadBom(){
     let bomUri = `${this.rootUri}/${this.bomFileName}`;
@@ -159,6 +244,9 @@ class TestApi{
 
     
   }
+
+
+  ///////////////
 
   //FIMXE : redundance with main app
   loadMesh(uriOrData, options){

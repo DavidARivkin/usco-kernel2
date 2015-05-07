@@ -216,6 +216,13 @@ class Kernel{
   
   ////
   //main ser/unserialization api 
+
+  saveDesignInfos( data ){
+    console.log("ATTEMPTING TO SAVE DESIGN META")
+    this.dataApi.saveDesignMeta( data );
+  }
+
+  /*load a design from the given uri*/
   loadDesign( uri, options ){
     let deferred = Q.defer();
     let self     = this;
