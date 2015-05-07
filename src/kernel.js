@@ -71,7 +71,7 @@ class Kernel{
     //if we have meshes or sources
     if( "resource" in options ){
       let resource = options.resource;
-      console.log("resource", resource);
+      console.log("resource", resource, resource._file);
       
       //saving mapping of meshNameToTypeUid
       this.dataApi.saveMeshNameToPartTypeUId(this.partRegistry._meshNameToPartTypeUId);
@@ -117,7 +117,7 @@ class Kernel{
     this.bom.registerInstance( partInst, {} );
     
     //persist changes
-    this.saveActiveAssemblyState();
+    this.saveAssemblyState();
   }  
   
   /* register the mesh <-> entity  relationship
@@ -165,7 +165,7 @@ class Kernel{
     this.bom.unRegisterInstance( entity );
     
     //persist changes
-    this.saveActiveAssemblyState();
+    this.saveAssemblyState();
     
     //remove entry not sure about this
     //this actually needs to be done on the visual side of things, not in the pure data layer
@@ -210,7 +210,7 @@ class Kernel{
     
     //this.activeAssembly.push( annotation );
     //this changes the assembly so ..save it
-    //this.saveActiveAssemblyState();
+    //this.saveAssemblyState();
   }
   
   
@@ -218,8 +218,14 @@ class Kernel{
   //main ser/unserialization api 
 
   saveDesignInfos( data ){
-    console.log("ATTEMPTING TO SAVE DESIGN META")
+    //console.log("ATTEMPTING TO SAVE DESIGN META")
     this.dataApi.saveDesignMeta( data );
+  }
+
+  saveAssemblyState( assembly ){
+    let assembly = assembly || this.activeDesign.activeAssembly;
+    //console.log("saving assembly state");
+    let strForm = JSON.stringify( assembly );
   }
 
   /*load a design from the given uri*/
@@ -484,24 +490,7 @@ class Kernel{
     return this.activeDesign;
   }
   
-  saveActiveAssemblyState( ){
-    console.log("saving active assembly state");
-    //localstorage
-    let strForm = JSON.stringify( this.activeDesign.activeAssembly );
-    localStorage.setItem("jam!-data-assembly", strForm );
 
-    /*this.setState({
-      design:{
-        //name:this.state.design.name,
-        activeAssembly: JSON.parse( strForm )
-      }
-    });*/
-
-    //this.stateIn.activeAssembly = JSON.parse( strForm ); 
-    console.log(this.stateIn)
-  }
-  
-  
 }
 
 //export { Kernel }

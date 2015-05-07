@@ -12,59 +12,13 @@ function jsonToFormData(jsonData){
   let jsonData = JSON.parse( JSON.stringify( jsonData ) );
   let formData = new FormData();
   for(let fieldName in jsonData){
-    formData.append(fieldName, jsonData[fieldName]);
+    let value = jsonData[fieldName];
+    //value = encodeURIComponent(JSON.stringify(value))
+    //value = JSON.stringify(value)
+    //value = value.replace(/\"/g, '');
+    formData.append(fieldName, value);
   }
   return formData;
-}
-
-//FIXME: move this to XHR/Whatver store
-function XHRPatch(uri, data, callback, errback){
-  var xhr = new XMLHttpRequest();
-  let data = JSON.stringify(data);
-
-    // Open the connection.
-    xhr.open('POST', uri, true);
-    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        // File(s) uploaded.
-        console.log("data updated ok");
-      } else {
-        console.error('An error occurred!');
-      }
-    };
-    xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          var percentage = Math.round((e.loaded * 100) / e.total);
-          console.log("upload in progress", percentage);
-      }
-    }, false);
-    
-    xhr.send(data);
-}
-
-
-function XHRPOST(uri, data){
-  var xhr = new XMLHttpRequest();
-    // Open the connection.
-    xhr.open('POST', uri, true);
-    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        // File(s) uploaded.
-        console.log("data updated ok");
-      } else {
-        console.error('An error occurred!');
-      }
-    };
-    xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          var percentage = Math.round((e.loaded * 100) / e.total);
-          console.log("upload in progress", percentage);
-      }
-    }, false);
-    
-    xhr.send(data);
 }
 
 class TestApi{
@@ -72,8 +26,11 @@ class TestApi{
     this.apiUri    = "http://localhost:3080/api/";
     this.designsUri = this.apiUri+"designs/";
     
-    this.rootUri    = "";
-    this.designName = "";
+    this.designsUri = "http://jamapi.youmagine.com/api/v1/designs/";
+    //let designUri = "http://jamapi.youmagine.com/api/v1/designs/test";
+    this.rootUri    = undefined;
+    this.designName = undefined;
+
     this.assembliesFileName = "assemblies.json";//"assemblies_old.json";//"assemblies-simple.json"//
     this.bomFileName        = "bom.json";//"bom_old.json"//"bom.json";
     //TODO: use our pre-exising "stores"
@@ -83,6 +40,11 @@ class TestApi{
     this.store = undefined;
   }
 
+  //FIXME: not sure about this ?
+  setDesignName(name){
+    this.rootUri = this.designsUri+"/"+name;
+    //check if the name is taken ?
+  }
 
   /*load all required elements of a design*/
   loadFullDesign(designUri){
@@ -153,10 +115,7 @@ class TestApi{
    
   }
 
-
-
   ///////////
-
   /* load a given assembly*/
   loadAssemblyState( ){
     let assemblyUri = `${this.rootUri}/${this.assembliesFileName}`;
@@ -174,6 +133,10 @@ class TestApi{
     return $rawData.map( data => JSON.parse( data) );
   }
 
+  /*checks if a design exists*/
+  doesDesignExist(path){
+    this.designsUri
+  }
 
   /*load the deign metadata*/
   loadDesignMeta(){
@@ -188,27 +151,14 @@ class TestApi{
 
   /*save the design metadata*/
   saveDesignMeta(designMeta){
-    let designsUri = "http://jamapi.youmagine.com/api/v1/designs/test";
-    let designMeta = {name:"bla"}
-    log.info("Saving design meta to ", designsUri, "data",designMeta)
+    if(!this.rootUri){
+      log.info("not rootUri specified, cannot save designMeta")
+      return;
+    }
+    //let designsUri = "http://jamapi.youmagine.com/api/v1/designs/test";
+    log.info("Saving design meta to ", designsUri, "data",designMeta);
 
-    //FIXME/ this should be internal in store
-    /*let $designMeta = fromPromise(this.store.read(designsUri).promise);
-    $designMeta.subscribe(function(data){
-      console.log("got data",data)
-    },
-    function(){},function(){})*/
-    //if the read succeeds : design exists, we can PATCH else POST
-    //this.store.write = XHRPatch;
-    //this.store.write(designsUri, designMeta)
-
-    
-    var xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("PATCH", designsUri);
-    //xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-    let outData = jsonToFormData(designMeta);
-    xmlhttp.send(outData);
-
+    this.store.write(this.rootUri, designMeta, {formatter:jsonToFormData})
   }
 
   /*load the bill of materials*/
@@ -241,8 +191,49 @@ class TestApi{
     let rawBomPromise = this.store.read(bomUri).promise;
     let $rawBom = fromPromise(rawBomPromise);
     return $rawBom.map( data => JSON.parse( data) );
+  }
 
+  /*save a file/document at the given path*/
+  saveFile( path, data ){
+    if(!this.rootUri){
+      log.info("not rootUri specified, cannot save file")
+      return;
+    }
+    log.info("saving file to",path);
+
+
+    let fileName = path;
+    let cleanedFileName = path.toLowerCase().replace(/\./g, '-');
+    //let fileUri = "http://jamapi.youmagine.com/api/v1/designs/test/documents/"+cleanedFileName
+    let fileUri = `${this.rootUri}/documents/${cleanedFileName}`;
+
+    let uploadData ={
+      modelfile:data
+    }
+
+    uploadData = new FormData();
+    uploadData.append("modelfile", data);
+
+    this.store.write(fileUri, uploadData );//, {formatter:jsonToFormData})
+
+    /*var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("POST", "http://jamapi.youmagine.com/api/v1/designs/test/documents/");
+    let formData = new FormData();
+    formData.append("modelfile", data);
+    xmlhttp.send(formData);*/
     
+    /*var reader = new FileReader();  
+     this.xhr.upload.addEventListener("progress", function(e) {
+        if (e.lengthComputable) {
+          var percentage = Math.round((e.loaded * 100) / e.total);
+        }
+      }, false);
+    xhr.open("POST", "http://demos.hacks.mozilla.org/paul/demos/resources/webservices/devnull.php");
+    xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
+    reader.onload = function(evt) {
+      xhr.sendAsBinary(evt.target.result);
+    };
+    reader.readAsBinaryString(file);*/
   }
 
 
@@ -324,10 +315,14 @@ class TestApi{
   } 
   
   //FIXME: move this to asset manager/use it ??
-  saveFile( path, data ){
+  _saveFile( path, data ){
     let fileName = path;
 
     log.info("saving file to",path);
+
+
+
+
     return
     //only upload if we do not have it
     //TODO do checksum etc

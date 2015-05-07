@@ -10,10 +10,11 @@ class Part extends Entity{
       //typeUid : undefined,//part id, common for all instances of a given part
       //typeName: undefined,//part CLASS name : common for all instances of a given part
       name: "",
-      color : "#FFFFFFFF",
+      color : "#07a9ff",
       pos: [0,0,0],
       rot: [0,0,0],
       sca: [1,1,1],
+
       bbox:{min:[0,0,0],max:[0,0,0]}
     }
     //this.DEFAULTS = DEFAULTS;
@@ -21,6 +22,11 @@ class Part extends Entity{
     super( options );
     
     Object.assign( this, options );
+  }
+
+  setScale(scale){
+
+    //now update the bounding box too
   }
   
   clone(){
