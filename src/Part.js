@@ -25,8 +25,19 @@ class Part extends Entity{
   }
 
   setScale(scale){
+    //now update the bounding box too?
+  }
 
-    //now update the bounding box too
+  toJSON() {
+    return {
+      name:this.name,
+      iuid: this.iuid,
+      color:this.color,
+      pos:this.pos,
+      rot:this.rot,
+      sca:this.sca,
+      typeUid: this.typeUid
+    };
   }
   
   clone(){
