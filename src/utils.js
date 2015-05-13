@@ -62,4 +62,9 @@ var nameCleanup = function( name ){
    return cName;
 }
 
-export { generateUUID, hashCodeFromString, nameCleanup };
+/*generate a url-valid string from the input string :ie remove spaces, */
+function normalizeString(string){
+  return string.toLowerCase().replace(/\./g, '-').replace(/ /g, '-')
+}
+
+export { generateUUID, hashCodeFromString, nameCleanup, normalizeString };
