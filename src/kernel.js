@@ -34,8 +34,6 @@ class Kernel{
     //stateIn is just a hack for now
     this.stateIn = stateIn;
 
-    //FIXME: horrible temp hack
-    //this.ThicknessAnnotation = ThicknessAnnotation;
   
     this.partRegistry = new PartRegistry();
     
@@ -59,23 +57,21 @@ class Kernel{
     //TODO:remove, this is temporary
     this.activeAnnotations = [];
 
-
     //not sure
     this.assetManager = undefined;
   }
 
   
   registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
-    var partKlass = this.partRegistry.registerPartTypeMesh( part, mesh, options );
+    let {partKlass,typeUid} = this.partRegistry.registerPartTypeMesh( part, mesh, options );
     
     //if we have meshes or sources
     if( "resource" in options ){
       let resource = options.resource;
-      console.log("resource", resource, resource._file);
+      //console.log("resource", resource, resource._file);
       
       //saving mapping of meshNameToTypeUid
       this.dataApi.saveMeshNameToPartTypeUId(this.partRegistry._meshNameToPartTypeUId);
-
       //we have a mesh with a resource, store the file
       this.dataApi.saveFile( resource.name, resource._file );
     }
@@ -84,14 +80,8 @@ class Kernel{
     
     this.bom.registerPartType( partKlass );
     
-    return partKlass;
+    return {partKlass,typeUid};
   }
-
-  /*TODO: old , cleanup
-    //TODO: clean this up, just a hack
-      this.dataApi.designName = this.activeDesign.name;
-
-  */
   
   /*
     get new instance of mesh for an entity that does not have a mesh YET
@@ -132,9 +122,8 @@ class Kernel{
   }
   
   duplicateEntity( originalEntity, addToAssembly=true ){
-    console.log("duplicating entity");
-    //var dupe = entity.clone();
-    //entity.prototype();
+    log.info("duplicating entity", originalEntity);
+
     let entityType = this.partRegistry.partTypes[ originalEntity.typeUid ];
     let dupe       = this.partRegistry.createTypeInstance( entityType );
     //FIXME: do this correctly
@@ -184,9 +173,6 @@ class Kernel{
   }
   
   //helpers
-  /*retrieve all active entities*/
-
-
   /* is the given entity part of the active assembly?*/
   isEntityinActiveAssembly( entity ){
     return this.activeAssembly.isNodePresent( entity );
@@ -214,11 +200,12 @@ class Kernel{
   }
   
   
-  ////
+  //////////////////////////////
+  //////////////////////////////
   //main ser/unserialization api 
 
-  saveDesignInfos( data ){
-    //console.log("ATTEMPTING TO SAVE DESIGN META")
+  saveDesignMeta( data ){
+    console.log("ATTEMPTING TO SAVE DESIGN META")
     this.dataApi.saveDesignMeta( data );
   }
 
@@ -390,92 +377,11 @@ class Kernel{
   }
 
   loadMesh(uriOrData, options){
-     const DEFAULTS={
-    }
-    var options     = options || {};
-    var display     = options.display === undefined ? true: options.display;
-    var addToAssembly= options.addToAssembly === undefined ? true: options.addToAssembly;
-    var keepRawData = options.keepRawData === undefined ? true: options.keepRawData;
-    
-    if(!uriOrData) throw new Error("no uri or data to load!");
 
-    let self = this;
-    let resource = this.assetManager.load( uriOrData, {keepRawData:true, parsing:{useWorker:true,useBuffers:true} } );
-
-    var source = fromPromise(resource.deferred.promise);
-
-    let logNext  = function( next ){
-      log.info( next )
-    }
-    let logError = function( err){
-      log.error(err)
-    }
-
-    let handleLoadError = function( err ){
-       log.error("failed to load resource", err, resource.error);
-       //do not keep error message on screen for too long, remove it after a while
-       setTimeout(cleanupResource, self.dismissalTimeOnError);
-       return resource;
-    }
-    let cleanupResource = function( resource ){
-      log.info("cleaning up resources")
-      self.assetManager.dismissResource( resource );
-    }
-
-    let register = function( shape ){
-      //part type registration etc
-      //we are registering a yet-uknown Part's type, getting back an instance of that type
-      let partKlass    = self.kernel.registerPartType( null, null, shape, {name:resource.name, resource:resource} );
-      let partInstance = undefined;
-      if( addToAssembly ) {
-        partInstance = self.kernel.makePartTypeInstance( partKlass );
-        self.kernel.registerPartInstance( partInstance );
-      }
-
-      //FIXME: remove, this is just for testing
-      self.addEntityType( partKlass)
-      self.addEntityInstance(partInstance)
-      //we do not return the shape since that becomes the "reference shape", not the
-      //one that will be shown
-      return {klass:partKlass,instance:partInstance};
-    }
-
-    let showIt = function( klassAndInstance ){
-      if( display || addToAssembly ){
-        //klassAndInstance.instance._selected = true;//SETTIN STATE !! not good like this
-        self._tempForceDataUpdate();
-      }
-
-      return klassAndInstance
-    }
-
-    let mainProc = source
-      .map( postProcessMesh )
-      .map( centerMesh )
-      .share();
-
-    mainProc
-      .map( register )
-      .map( showIt )
-      .map( function(klassAndInstance){
-        //klassAndInstance.instance.pos[2]+=30;
-        return klassAndInstance;
-      })
-        .catch(handleLoadError)
-        //.timeout(100,cleanupResource)
-        .subscribe(logNext,logError);
-
-    mainProc.subscribe(logNext,logError);
   }
 
 
   //FIXME after this point, very doubtfull to be kept in this form & shape
-  saveDesign( design ){
-    let design = this.activeDesign;
-    console.log("saving design", design);
-    let strForm = JSON.stringify( design );
-    localStorage.setItem("jam!-data-design", strForm );
-  }
   
   //returns a fake/ testing design
   //TODO: impletement, use at least promises, or better generators/ yield
