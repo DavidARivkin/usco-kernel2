@@ -7,6 +7,8 @@ import logger from 'log-minim'
 let log = logger("testApi");
 log.setLevel("debug");
 
+import {normalizeString} from '../utils'
+
 
 function jsonToFormData(jsonData){
   let jsonData = JSON.parse( JSON.stringify( jsonData ) );
@@ -92,8 +94,6 @@ class TestApi{
           meshUrls.push( meshFileUri )
         }
       })
-
-      
       output._neededMeshUrls = meshUrls;*/
       //let meshNameToTypeUidUri = {};
       //this.partRegistry._meshNameToPartTypeUId = meshNameToTypeUidUri;
@@ -151,14 +151,22 @@ class TestApi{
 
   /*save the design metadata*/
   saveDesignMeta(designMeta){
-    if(!this.rootUri){
+    if(!this.rootUri && ! this.designsUri){
       log.info("not rootUri specified, cannot save designMeta")
-      return;
+      return
     }
-    //let designsUri = "http://jamapi.youmagine.com/api/v1/designs/test";
-    log.info("Saving design meta to ", designsUri, "data",designMeta);
 
-    this.store.write(this.rootUri, designMeta, {formatter:jsonToFormData})
+    let designUri = this.designsUri+normalizeString(designMeta.name)
+    if(!this.rootUri){
+      this.rootUri = designUri
+    }
+
+    //FIXME: temporary hack
+    designMeta.title = designMeta.name
+    //setDesignName
+    log.info("Saving design meta to ", designUri, "data",designMeta)
+
+    this.store.write(designUri, designMeta, {formatter:jsonToFormData})
   }
 
   /*load the bill of materials*/
@@ -168,8 +176,8 @@ class TestApi{
 
     //NOTE : this is a cancellable q deferred, not a promise
     let rawBomPromise = this.store.read(bomUri).promise;
-    let $rawBom = fromPromise(rawBomPromise);
-    return $rawBom.map( data => JSON.parse( data) );
+    let rawBom$ = fromPromise(rawBomPromise);
+    return rawBom$.map( data => JSON.parse( data) );
   }
 
   /*load meshName -> partUid mapping*/
@@ -178,8 +186,8 @@ class TestApi{
 
     //NOTE : this is a cancellable q deferred, not a promise
     let rawMappingPromise = this.store.read(bomUri).promise;
-    let $rawBom = fromPromise(rawBomPromise);
-    return $rawBom.map( data => JSON.parse( data) );
+    let rawBom$ = fromPromise(rawBomPromise);
+    return rawBom$.map( data => JSON.parse( data) );
   }
 
   /*load meshes*/
@@ -189,8 +197,8 @@ class TestApi{
 
     //NOTE : this is a cancellable q deferred, not a promise
     let rawBomPromise = this.store.read(bomUri).promise;
-    let $rawBom = fromPromise(rawBomPromise);
-    return $rawBom.map( data => JSON.parse( data) );
+    let rawBom$ = fromPromise(rawBomPromise);
+    return rawBom$.map( data => JSON.parse( data) );
   }
 
   /*save a file/document at the given path*/
@@ -199,41 +207,31 @@ class TestApi{
       log.info("not rootUri specified, cannot save file")
       return;
     }
-    log.info("saving file to",path);
+    log.info("saving file to",path)
 
 
     let fileName = path;
-    let cleanedFileName = path.toLowerCase().replace(/\./g, '-');
+    let cleanedFileName = path.toLowerCase().replace(/\./g, '-')
     //let fileUri = "http://jamapi.youmagine.com/api/v1/designs/test/documents/"+cleanedFileName
-    let fileUri = `${this.rootUri}/documents/${cleanedFileName}`;
+    let fileUri = `${this.rootUri}/documents/${cleanedFileName}`
+    log.debug("real save path", fileUri)
 
     let uploadData ={
       modelfile:data
     }
 
     uploadData = new FormData();
-    uploadData.append("modelfile", data);
+    uploadData.append("modelfile", data)
 
-    this.store.write(fileUri, uploadData );//, {formatter:jsonToFormData})
-
-    /*var xmlhttp = new XMLHttpRequest();
-    xmlhttp.open("POST", "http://jamapi.youmagine.com/api/v1/designs/test/documents/");
-    let formData = new FormData();
-    formData.append("modelfile", data);
-    xmlhttp.send(formData);*/
-    
-    /*var reader = new FileReader();  
-     this.xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          var percentage = Math.round((e.loaded * 100) / e.total);
-        }
-      }, false);
-    xhr.open("POST", "http://demos.hacks.mozilla.org/paul/demos/resources/webservices/devnull.php");
-    xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
-    reader.onload = function(evt) {
-      xhr.sendAsBinary(evt.target.result);
-    };
-    reader.readAsBinaryString(file);*/
+    let rawDef = this.store.write(fileUri, uploadData )//, {formatter:jsonToFormData})
+    let rawPromise =rawDef.promise
+    console.log(rawPromise)
+    let foo$ = fromPromise(rawPromise)
+      .subscribe(
+        function(res){console.log("ok",res)},
+        function(res){console.log("ok",res)},
+        function(res){console.log("error",res)}
+      ) 
   }
 
 
