@@ -85,7 +85,7 @@ class PartRegistry{
     //if not, add it to templates
     this.addTemplateMeshForPartType( mesh.clone(), typeUid );
 
-    return partKlass;
+    return {partKlass,typeUid};
   }
   
   /* register a part type
