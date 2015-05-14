@@ -16,20 +16,22 @@ class BomEntry{
 class Bom {
   constructor(){
     //TODO: ermmm bom within bom?
-    this.bom = [];
+    this.bom = []
     
     //mappings between part types and their bom entries: ie one bom entry per class + params
-    this.partTypeToBomEntryMap = new WeakMap();
-    this.bomEntryToPartTypeMap = new WeakMap();
+    this.partTypeToBomEntryMap = new WeakMap()
+    this.bomEntryToPartTypeMap = new WeakMap()
     
     //this.bomEntryToPartInstances = new WeakMap();
-    this.partTypeAndParamsToBomEntryMap = new Map();
-    this.partInstanceToBomEntryMap = new WeakMap();
+    this.partTypeAndParamsToBomEntryMap = new Map()
+    this.partInstanceToBomEntryMap = new WeakMap()
   }
   
   //basic api
   registerPartType( partKlass, parameters={} ){
-    console.log("registering part type in bom", partKlass);
+    console.log("registering part type in bom", partKlass)
+    //let typeUid = parameters.typeUid || partKlass.prototype.typeUid
+
     const DEFAULTS = {
       id: -1,
       name: partKlass.prototype.typeName,
@@ -41,7 +43,9 @@ class Bom {
       parameters:parameters,
       implementations:{},//without defaults to "default":"xxx.stl"
       //FIXME: hack field? shoud this be in another data structure ?
-      _instances:{}//same keys as implementations, values are in memory entities
+      _instances:{},//same keys as implementations, values are in memory entities
+
+      uuid:null//temporary, just a hack of sorts 
     };
     let bomEntry = Object.assign({}, DEFAULTS, bomEntry); 
     
@@ -52,6 +56,7 @@ class Bom {
       this.partTypeAndParamsToBomEntryMap.set( hash, bomEntry );
       this.bom.push( bomEntry );
       bomEntry.id = this.bom.length - 1 ; 
+      bomEntry.uuid = partKlass.prototype.typeUid
     }
     //this.bomEntryToPartTypeMap.set( bomEntry, partKlass );
     //this.partTypeToBomEntryMap.set( [partKlass, parameters], bomEntry );
@@ -90,6 +95,18 @@ class Bom {
     this.partInstanceToBomEntryMap.delete( instance );
     //FIXME can't we use the length of instances ? or should we allow for human settable variation
     bomEntry.qty -= 1;
+  }
+
+  clear(){
+    this.bom = []
+    
+    //mappings between part types and their bom entries: ie one bom entry per class + params
+    this.partTypeToBomEntryMap = new WeakMap()
+    this.bomEntryToPartTypeMap = new WeakMap()
+    
+    //this.bomEntryToPartInstances = new WeakMap();
+    this.partTypeAndParamsToBomEntryMap = new Map()
+    this.partInstanceToBomEntryMap = new WeakMap()
   }
  
   /*
