@@ -60,24 +60,26 @@ class Kernel{
 
   
   registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
-    let {partKlass,typeUid} = this.partRegistry.registerPartTypeMesh( part, mesh, options );
-    
+    let {partKlass,typeUid} = this.partRegistry.registerPartTypeMesh( part, mesh, options )
+
+    this.bom.registerPartType( partKlass )
+
     //if we have meshes or sources
     if( "resource" in options ){
-      let resource = options.resource;
+      let resource = options.resource
       //console.log("resource", resource, resource._file);
       
       //saving mapping of meshNameToTypeUid
-      this.dataApi.saveMeshNameToPartTypeUId(this.partRegistry._meshNameToPartTypeUId);
+      this.dataApi.saveMeshNameToPartTypeUId(this.partRegistry._meshNameToPartTypeUId)
       //we have a mesh with a resource, store the file
-      this.dataApi.saveFile( resource.name, resource._file );
+      this.dataApi.saveFile( resource.name, resource._file )
+      //the bom stores the mapping of typeuid to mesh name/path
+      this.bom.registerImplementation2(typeUid,{},"default",resource.name)
     }
     //save part types??
-    //this.dataApi.saveCustomEntityTypes( this.partRegistry._customPartTypesMeta );
+    //this.dataApi.saveCustomEntityTypes( this.partRegistry._customPartTypesMeta )
     
-    this.bom.registerPartType( partKlass );
-    
-    return {partKlass,typeUid};
+    return {partKlass,typeUid}
   }
   
   /*
@@ -86,7 +88,7 @@ class Kernel{
     TODO: change into getEntityMeshInstance
   */
   *getPartMeshInstance( entity ){
-    let mesh = yield this.partRegistry.getPartTypeMesh( entity.typeUid );
+    let mesh = yield this.partRegistry.getPartTypeMesh( entity.typeUid )
     //log.error("entity",entity)
     //TODO: perhaps do this differently: ie return a wrapper mesh with just a bounding
     //box and "fill in"/stream in the mesh later ?
@@ -262,28 +264,42 @@ class Kernel{
         keepRawData:true, 
         parsing:{useWorker:true,useBuffers:true} 
       }
-      //FIXME: big hACK!!
-      uriOrData = "./"+uriOrData
-      let resource = self.assetManager.load( uriOrData, meshLoadParams );
-      var $mesh = fromPromise(resource.deferred.promise);
 
-      function extractMeshFromResource(resource) { 
-        return resource.data
-      }
+     
       function registerMeshAsTypeTemplate(mesh){
         //add mesh as template for its type
         log.info("setting ",mesh,"as template of ",typeUid)
-        self.partRegistry.addTemplateMeshForPartType( mesh.clone(), typeUid );
-        return mesh;
+        self.partRegistry.addTemplateMeshForPartType( mesh.clone(), typeUid )
+        return mesh
       }
-      let $registeredMesh = $mesh
-        .map(extractMeshFromResource)
+
+      //FIXME: big hACK!!
+      if(storeName === "YM"){
+       
+       return self.dataApi.__loadFileUrl(uriOrData)
+        .map(function(uriOrData){
+          let resource = self.assetManager.load( uriOrData, meshLoadParams )
+          //return fromPromise(resource.deferred.promise)
+          return resource.deferred.promise
+        })
+        .flatMap(fromPromise)
+        .pluck('data')
         .map(postProcessMesh)
         .map(centerMesh)
         .map(registerMeshAsTypeTemplate)
-        .take(1);
-      //.subscribe(logNext,logError,logDone)
-      return $registeredMesh
+        .take(1)
+      }else{
+        uriOrData = "./"+uriOrData
+        let resource = self.assetManager.load( uriOrData, meshLoadParams )
+        var $mesh = fromPromise(resource.deferred.promise)
+
+        return $mesh
+        .pluck('data')
+        .map(postProcessMesh)
+        .map(centerMesh)
+        .map(registerMeshAsTypeTemplate)
+        .take(1)
+      }
     }
 
     return $designData.map(function(data)
@@ -346,80 +362,20 @@ class Kernel{
       //FIXME: ugh, why do we need to re-iterate?
       self.activeDesign.activeAssembly.children.map(function(child){
         try{
-        self.bom.registerInstance( child, {} );
+        self.bom.registerInstance( child, {} )
         }catch(error){}
       })
-      
 
-      /*
-      //console.log("OUTPUTBOM",bom, tmpOutputBom)
-      //console.log("OUTPUTASSEMBLY",tmpOutputAssembly)
-      function extractTypeIdFromDescription(inputDescription){
-        let key = bomEntry.description.split("part ").pop();
-        let typeUid = parseInt(key);
-        return typeUid;
-      }
-
-      function descriptionFormatter(inputDescription){
-        let outputDescription = inputDescription.split("part ").shift();
-        return outputDescription.trim();
-      }
-
-      //generate new outputs with new uids
-      function generateNewTypeUidMapping( inputBom, inputAssembly, idGenerator=generateUUID){
-        let outBom      = Object.assign([],inputBom);
-        let outAssembly = Object.assign({},inputAssembly);
-
-        outBom.map(function(bomEntry){
-          let originalTypeId = bomEntry.id;
-          let newTypeId      = idGenerator();
-          bomEntry.id = newTypeId;
-          bomEntry.description = descriptionFormatter(bomEntry.description);
-          
-          outAssembly.children.map(function(assemblyEntry){
-            if(assemblyEntry.typeUid == originalTypeId){
-              assemblyEntry.typeUid = newTypeId;
-            }
-          });
-
-        })  
-
-        let outAssemblies = [outAssembly];
-        console.log("OUTPUTBOM",JSON.stringify(outBom) );
-        console.log("OUTPUTASSEMBLY",JSON.stringify( outAssemblies) );
-  
-      }
-      generateNewTypeUidMapping( tmpOutputBom, tmpOutputAssembly )*/
-
-
-      //console.log("PLEASE LOAD",combos);
-      //return Rx.Observable.fromArray(registrations)
-      return registrations;
+      return registrations
+    })
+    .map(function(regs){
+      console.log("regs",regs)
+      return regs
     })
     .flatMap(Rx.Observable.from)
-    .mergeAll();
+    .mergeAll()
   }
 
-  loadMesh(uriOrData, options){
-
-  }
-
-
-  //FIXME after this point, very doubtfull to be kept in this form & shape
-  
-  //returns a fake/ testing design
-  //TODO: impletement, use at least promises, or better generators/ yield
-  _loadDesign( uri, options, callback ){
-    console.log("loading design from", uri);
-    //FIXME: horrible
-    let designName = uri.split("/").pop();
-    console.log("designName", designName);
-    let design = new Design({name:designName,title:"Groovy design", description:"a classy design"});
-    //FIXME horrible
-    this.activeDesign.name = designName;
-    return this.activeDesign;
-  }
-  
 
 }
 
