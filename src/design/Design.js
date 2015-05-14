@@ -9,7 +9,6 @@ class Design{
       uid : generateUUID(),
       sid : nid(),//short id, 6 character
       name: "NewDesign",
-      title:"New Design",
       description:"",
       version:"0,0.0",
       url:"",
@@ -29,11 +28,6 @@ class Design{
     this.assemblies = [];
     this.activeAssembly = new Assembly();
     this.assemblies.push( this.activeAssembly );
-  }
-  
-  //swithc to a specific assembly as main/active assembly
-  switchAssemblies( newAssembly ){
-    //TODO implement
   }
   
   //configure the fields to serialize
