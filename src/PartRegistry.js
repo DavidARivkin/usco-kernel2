@@ -10,21 +10,40 @@ class PartRegistry{
   constructor(){
      //container for all already loaded meshes
     //TODO : should this be a facade ?
-    this.parts = {};
+    this.parts = {}
     //TODO: is this not redundant with assets, but stored by part id ???
-    this._partTypeMeshTemplates = {}; //the original base mesh: ONE PER PART
-    this._partTypeMeshWaiters  = {};//internal : when
-    this.partMeshInstances = {};
+    this._partTypeMeshTemplates = {}//the original base mesh: ONE PER PART
+    this._partTypeMeshWaiters  = {}//internal : when
+    this.partMeshInstances = {}
     
     //FIXME: VISUALS temporary , until I find better
-    this._meshNameToPartTypeUId = {};
+    this._meshNameToPartTypeUId = {}
     
-    this.partTypes = {};
-    this.partTypesByName = {};
-    this.partTypeInstances = {};
+    this.partTypes = {}
+    this.partTypesByName = {}
+    this.partTypeInstances = {}
     
     //FIXME: not sure: json representation of custom PART types, stored by typeUid
-    this._customPartTypesMeta = {};
+    this._customPartTypesMeta = {}
+  }
+
+  //resets all
+  clear(){
+    this.parts = {}
+    //TODO: is this not redundant with assets, but stored by part id ???
+    this._partTypeMeshTemplates = {}//the original base mesh: ONE PER PART
+    this._partTypeMeshWaiters  = {}//internal : when
+    this.partMeshInstances = {}
+    
+    //FIXME: VISUALS temporary , until I find better
+    this._meshNameToPartTypeUId = {}
+    
+    this.partTypes = {}
+    this.partTypesByName = {}
+    this.partTypeInstances = {}
+    
+    //FIXME: not sure: json representation of custom PART types, stored by typeUid
+    this._customPartTypesMeta = {}
   }
   
   /* 
