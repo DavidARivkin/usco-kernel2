@@ -58,6 +58,23 @@ class Kernel{
     this.assetManager = undefined;
   }
 
+  setDesignAsPersistent(rootUri){
+    log.info("setting design as persitent")
+    //this.dataApi.rootUri
+    //for now ,always assume YM api
+
+    //determine the "fs/store/api to use"
+    /*let {storeName,undefined} = parseFileUri(uri, function YMFSMatcher(storeName,uri,fileName){
+      if(storeName === "xhr" && uri.indexOf("jamapi.youmagine.com") > -1 ) return "YM"
+      return storeName
+    })*/
+    
+    let store = this.dataApi.store
+    this.dataApi = new (require("./testApi/testApiYM"))
+    this.dataApi.store = store
+    if(rootUri) this.dataApi.rootUri = rootUri
+    
+  }
   
   registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
     let {partKlass,typeUid} = this.partRegistry.registerPartTypeMesh( part, mesh, options )
@@ -106,7 +123,7 @@ class Kernel{
     this.bom.registerInstance( partInst, {} );
     
     //persist changes
-    this.saveAssemblyState();
+    //this.saveAssemblyState();
   }  
   
   /* register the mesh <-> entity  relationship
@@ -209,20 +226,20 @@ class Kernel{
   //main ser/unserialization api 
 
   saveDesignMeta( data ){
-    log.debug("ATTEMPTING TO SAVE DESIGN META")
-    return this.dataApi.saveDesignMeta( data )
+    log.debug("saving design metadata")
+    if(data) return this.dataApi.saveDesignMeta( data )
   }
 
   saveAssemblyState( assembly ){
     log.info("saving assembly state")
-    return this.dataApi.saveAssemblyState(assembly)
+    if(assembly) return this.dataApi.saveAssemblyState(assembly)
   }
 
   saveBom( bom ){
     log.info("saving bom state")
     let bom = this.bom.bom
 
-    return this.dataApi.saveBom(bom)
+    if(bom) return this.dataApi.saveBom(bom)
   }
 
   /*load a design from the given uri*/
@@ -307,11 +324,28 @@ class Kernel{
 
       let {design, bom, assemblies} = data;
 
-      self.activeDesign = new Design(design);
-      self.activeDesign.activeAssembly = new Assembly( assemblies[0] );
+      self.activeDesign = new Design(design)
+      self.activeDesign.activeAssembly = new Assembly( assemblies )//[0] )
 
+      //apply a few potential fixes
       self.activeDesign.activeAssembly.children = self.activeDesign.activeAssembly.children || []
-      self.activeAssembly = self.activeDesign.activeAssembly;
+      //self.activeDesign.authors = self.activeDesign.authors || []
+      //self.activeDesign.licenses = self.activeDesign.licenses || []
+      //self.activeDesign.tags     = self.activeDesign.tags || []
+
+      function convertToArray(object, fieldName){
+        if(!object[fieldName]){
+          return []
+        }
+        if(object[fieldName] == "" ) {
+          return Array.prototype.slice.call(object[fieldName]) 
+        }
+      }
+      self.activeDesign.authors = convertToArray(self.activeDesign,"authors")
+      self.activeDesign.licenses = convertToArray(self.activeDesign,"licenses")
+      self.activeDesign.tags     = convertToArray(self.activeDesign,"tags")
+      
+      self.activeAssembly = self.activeDesign.activeAssembly
 
       //get the list of typeUids
       let neededTypeUids = new Set();
@@ -350,9 +384,11 @@ class Kernel{
         let typeName  = "foo"+index;
         partKlass.prototype = {typeName:typeName,typeUid:typeUid}
         
-        let klass = self.partRegistry.makeNamedPartKlass( typeName, typeUid );
-        self.partRegistry.registerPartType( klass, typeName, typeUid );
-        self.bom.registerPartType( klass );
+        let klass = self.partRegistry.makeNamedPartKlass( typeName, typeUid )
+        self.partRegistry.registerPartType( klass, typeName, typeUid )
+        self.bom.registerPartType( klass )
+        //self.bom
+        self.bom.registerImplementation2(typeUid,{},"default",bomEntry.implementations.default)
 
         //self.registerPartType(undefined, undefined, undefined, {name:bomEntry.title});
         //part=undefined, source=undefined, mesh=undefined
