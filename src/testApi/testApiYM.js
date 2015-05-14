@@ -11,16 +11,20 @@ import {normalizeString} from '../utils'
 
 
 function jsonToFormData(jsonData){
-  let jsonData = JSON.parse( JSON.stringify( jsonData ) );
-  let formData = new FormData();
+  let jsonData = JSON.parse( JSON.stringify( jsonData ) )
+  let formData = new FormData()
   for(let fieldName in jsonData){
-    let value = jsonData[fieldName];
+    let value = jsonData[fieldName]
     //value = encodeURIComponent(JSON.stringify(value))
     //value = JSON.stringify(value)
     //value = value.replace(/\"/g, '');
-    formData.append(fieldName, value);
+    if(Object.prototype.toString.call(value) === "[object Object]"){
+      value = JSON.stringify(value)
+    }
+
+    formData.append(fieldName, value)
   }
-  return formData;
+  return formData
 }
 
 class TestApiYM{
@@ -74,7 +78,12 @@ class TestApiYM{
       //console.log(designMeta, bom, assemblies); 
       let output = {}
       output.design = designMeta;
-      output.bom = bom;
+      output.bom = bom
+        //FIXME : remap because of current limitations
+        .map( function(bomEntry) { 
+          if(bomEntry.uuid){bomEntry.id= bomEntry.uuid}
+
+          return bomEntry} )
       output.assemblies = assemblies;
       return output
     }
@@ -221,8 +230,8 @@ class TestApiYM{
     bom.map(function(bomEntry){
       let bomEntryUri = `${bomUri}/${bomEntry.uuid}`
       bomEntry.title = bomEntry.name
-      let strBomEntry = JSON.stringify(bomEntry)
-      let deferred = self.store.write(bomEntryUri, strBomEntry, {formatter:jsonToFormData})
+      //let strBomEntry = JSON.stringify(bomEntry)
+      let deferred = self.store.write(bomEntryUri, bomEntry, {formatter:jsonToFormData})
     })
 
   }
@@ -257,7 +266,7 @@ class TestApiYM{
     log.info("saving file to",path)
 
     let fileName = path;
-    let cleanedFileName = path.toLowerCase().replace(/\./g, '-')
+    let cleanedFileName = normalizeString(path)//path.toLowerCase().replace(/\./g, '-')
     //let fileUri = "http://jamapi.youmagine.com/api/v1/designs/test/documents/"+cleanedFileName
     let fileUri = `${this.rootUri}/documents/${cleanedFileName}`
     log.debug("real save path", fileUri)
@@ -280,6 +289,40 @@ class TestApiYM{
       ) 
   }
 
+  loadFile( path, options){
+    log.info("Loading file from", path)
+
+    let cleanedFileName = normalizeString(path)
+    let fileUri = `${this.rootUri}/documents/${cleanedFileName}`
+
+
+
+    let rawPromise = this.store.read(fileUri).promise
+    fromPromise(rawPromise)
+      .subscribe(function(data){
+        data = JSON.parse(data)
+        console.log(data)
+      })
+    //FIXME: if we go around assetManager, we do not get...asset managment
+    //let resource = self.assetManager.load( uriOrData, meshLoadParams )
+    //let $mesh = fromPromise(resource.deferred.promise)
+  }
+
+  //this actually just returns the url of a file on jam/YM, yup another hack
+  __loadFileUrl(path){
+    log.info("Loading file from", path)
+
+    let cleanedFileName = normalizeString(path)
+    let fileUri = `${this.rootUri}/documents/${cleanedFileName}`
+
+    let rawPromise = this.store.read(fileUri).promise
+    return fromPromise(rawPromise)
+      .map(function(data){
+        data = JSON.parse(data)
+        console.log(data)
+        return data.url
+      })
+  }
 
   ///////////////
 
@@ -300,47 +343,10 @@ class TestApiYM{
   getUserDesigns(user,options){
 
   }
-
-  saveDesign( design, options ){
-    console.log("saving design", design);
-    //var co = require('co');
-  }
   
   loadDesign( uri, options ){
     console.log("loading design from", uri);
-    
-     //TODO: should look more like this
-    //let design = yield this.dataApi.loadDesign( uri , options ); 
-    
-    meshNameToPartTypeUId = JSON.parse( meshNameToPartTypeUId );
-    if( meshNameToPartTypeUId) {
-      meshNameToPartTypeUId = JSON.parse( meshNameToPartTypeUId );
-      this.partRegistry._meshNameToPartTypeUId = meshNameToPartTypeUId;
-      
-      //FIXME: horrible hack, see code in part registry
-      for( key in meshNameToPartTypeUId)
-      {
-        let klass = Part;
-        let cName = nameCleanup(key);
-        let options = { name:cName };
-        let part = new klass( options );//new Part( options );
-        let typeUid = meshNameToPartTypeUId[key];
-        
-        part.typeName = cName;//name of the part CLASS
-        part.typeUid  = typeUid;
-        this.partRegistry.parts[ typeUid ] = part;
-        
-        this.partRegistry.registerPartInstance( part );
-        //not sure
-        part.name = part.typeName + "" + (this.partRegistry.partTypeInstances[ typeUid ].length - 1);
-        
-        //do we have ANY meshes for this part ?
-        //if not, add it to templates
-      }
-    }
-    
-    
-    
+     
     //now that we have the list of files that we need, load those
     this.loadDocsOfDesign( callback );
     
@@ -354,60 +360,7 @@ class TestApiYM{
   saveCustomEntityTypes( typesData ){
     console.log("saving custom entity types",typesData);
   } 
-  
-  //FIXME: move this to asset manager/use it ??
-  _saveFile( path, data ){
-    let fileName = path;
-
-    log.info("saving file to",path);
-
-
-
-
-    return
-    //only upload if we do not have it
-    //TODO do checksum etc
-    if( this._designDocs.indexOf( fileName ) > -1 ) return;
-    this._designDocs.push( fileName );
-  
-    let uri = `${this.designsUri}${this.designName}/documents`;
-    var formData = new FormData();
-    let name = "test";
-    formData.append(name, data, fileName);
-   
-    var xhr = new XMLHttpRequest();
-    // Open the connection.
-    xhr.open('POST', uri, true);
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        // File(s) uploaded.
-        console.log("uploaded ok");
-      } else {
-        console.error('An error occurred!');
-      }
-    };
-    xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          var percentage = Math.round((e.loaded * 100) / e.total);
-          console.log("upload in progress", percentage);
-      }
-    }, false);
     
-    xhr.send(formData);
-    /*var reader = new FileReader();  
-     this.xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          var percentage = Math.round((e.loaded * 100) / e.total);
-        }
-      }, false);
-    xhr.open("POST", "http://demos.hacks.mozilla.org/paul/demos/resources/webservices/devnull.php");
-    xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
-    reader.onload = function(evt) {
-      xhr.sendAsBinary(evt.target.result);
-    };
-    reader.readAsBinaryString(file);*/
-  }
-  
    /* TODO: how about reusing the asset manager????
     also : only load data for files actually use in assembly
   */
@@ -437,7 +390,6 @@ class TestApiYM{
       };
       xhr.send();
   }
-  
 }
 
 
