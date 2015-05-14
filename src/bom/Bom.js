@@ -61,24 +61,33 @@ class Bom {
     //this.bomEntryToPartTypeMap.set( bomEntry, partKlass );
     //this.partTypeToBomEntryMap.set( [partKlass, parameters], bomEntry );
   }
+
+
+  registerImplementation2( typeUid, parameters={}, name, implementation){
+    let hash = hashCodeFromString( typeUid+JSON.stringify( parameters ) )
+    let bomEntry = this.partTypeAndParamsToBomEntryMap.get( hash )
+    if(!bomEntry) throw new Error("Bom entry not found")
+
+    bomEntry.implementations[name] = implementation
+  }
   
   /*
     register an instance 
   */
   registerInstance( instance, parameters={} )
   {
-    if(!instance) throw new Error("No instance given");
+    if(!instance) throw new Error("No instance given")
     
-    let hash = hashCodeFromString( instance.typeUid+JSON.stringify( parameters ) );
+    let hash = hashCodeFromString( instance.typeUid+JSON.stringify( parameters ) )
     let bomEntry = this.partTypeAndParamsToBomEntryMap.get( hash )
     
-    if(!bomEntry) throw new Error("Bom entry not found");
+    if(!bomEntry) throw new Error("Bom entry not found")
     //console.log("registering", instance, "as instance of ", bomEntry.name ); 
     //bomEntry._instances.push( instance);
-    this.partInstanceToBomEntryMap.set( instance, bomEntry );
+    this.partInstanceToBomEntryMap.set( instance, bomEntry )
     
     //FIXME can't we use the length of instances ? or should we allow for human settable variation
-    bomEntry.qty += 1;
+    bomEntry.qty += 1
   }
   
   /*remove an instance 
