@@ -20,6 +20,7 @@ import logger from 'log-minim'
 let log = logger("kernel");
 log.setLevel("debug");
 
+import {parseFileUri} from './utils/pathUtils'
 
 //TODO:remove
 //import { ThicknessAnnotation } from "./annotations/ThicknessAnnot.js"
@@ -53,10 +54,6 @@ class Kernel{
     //not sure
     this.dataApi = new TestApi();
     
-    
-    //TODO:remove, this is temporary
-    this.activeAnnotations = [];
-
     //not sure
     this.assetManager = undefined;
   }
@@ -199,27 +196,53 @@ class Kernel{
     //this.saveAssemblyState();
   }
   
+  /*resets everything to empty*/
+  clearAll(){
+    this.partRegistry.clear()
+    this.bom.clear()
+  }
   
   //////////////////////////////
   //////////////////////////////
   //main ser/unserialization api 
 
   saveDesignMeta( data ){
-    console.log("ATTEMPTING TO SAVE DESIGN META")
-    this.dataApi.saveDesignMeta( data );
+    log.debug("ATTEMPTING TO SAVE DESIGN META")
+    return this.dataApi.saveDesignMeta( data )
   }
 
   saveAssemblyState( assembly ){
-    let assembly = assembly || this.activeDesign.activeAssembly;
-    //console.log("saving assembly state");
-    let strForm = JSON.stringify( assembly );
+    log.info("saving assembly state")
+    return this.dataApi.saveAssemblyState(assembly)
+  }
+
+  saveBom( bom ){
+    log.info("saving bom state")
+    let bom = this.bom.bom
+
+    return this.dataApi.saveBom(bom)
   }
 
   /*load a design from the given uri*/
   loadDesign( uri, options ){
     let deferred = Q.defer();
     let self     = this;
+
+    //determine the "fs/store/api to use"
+    let {storeName,undefined} = parseFileUri(uri, function YMFSMatcher(storeName,uri,fileName){
+      if(storeName === "xhr" && uri.indexOf("jamapi.youmagine.com") > -1 ) return "YM"
+      return storeName
+    })
+    if(storeName === "YM") {
+      let store = this.dataApi.store
+      this.dataApi = new (require("./testApi/testApiYM"))
+      this.dataApi.store = store
+    }
+
+
+
     let $designData = this.dataApi.loadFullDesign(uri,options);
+
     $designData =  $designData.take(1).share();
 
     function logNext( next ){
@@ -235,7 +258,7 @@ class Kernel{
     function loadMeshAndRegisterItAsTemplate(uriOrData, typeUid){
       
       let meshLoadParams= {
-        parentUri:uri[0],
+        parentUri:uri,
         keepRawData:true, 
         parsing:{useWorker:true,useBuffers:true} 
       }
@@ -271,6 +294,7 @@ class Kernel{
       self.activeDesign = new Design(design);
       self.activeDesign.activeAssembly = new Assembly( assemblies[0] );
 
+      self.activeDesign.activeAssembly.children = self.activeDesign.activeAssembly.children || []
       self.activeAssembly = self.activeDesign.activeAssembly;
 
       //get the list of typeUids
