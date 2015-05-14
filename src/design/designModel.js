@@ -4,6 +4,16 @@ let log = logger("design");
 log.setLevel("debug");
 
 
+const defaults = {
+  name:        "untitled design",
+  description: "Some description",
+  version:     "0.0.0",
+  authors:     [],
+  tags:        [],
+  licenses:    [],
+  meta:        undefined,
+}
+
 //model ??
 function Design(){
   
