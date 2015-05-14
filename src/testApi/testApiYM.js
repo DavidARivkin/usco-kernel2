@@ -23,7 +23,7 @@ function jsonToFormData(jsonData){
   return formData;
 }
 
-class TestApi{
+class TestApiYM{
   constructor(){
     this.apiUri    = "http://localhost:3080/api/";
     this.designsUri = this.apiUri+"designs/";
@@ -118,7 +118,7 @@ class TestApi{
   ///////////
   /* load a given assembly*/
   loadAssemblyState( ){
-    let assemblyUri = `${this.rootUri}/${this.assembliesFileName}`;
+    let assemblyUri = `${this.rootUri}/assemblies`
 
     /*let defferred = store.read(fileOrFileName)
     return defferred.promise.then(function(){
@@ -129,8 +129,29 @@ class TestApi{
     //NOTE : this is a cancellable q deferred, not a promise
     let rawAssemblyPromise = this.store.read(assemblyUri).promise;
     //self.activeDesign.activeAssembly = new Assembly( strAssembly );
-    let $rawData = fromPromise(rawAssemblyPromise);
-    return $rawData.map( data => JSON.parse( data) );
+    let $rawData = fromPromise(rawAssemblyPromise)
+    return $rawData.map( data => JSON.parse( data) )
+  }
+
+  saveAssemblyState(assemblyState){
+    if(!this.rootUri){
+      log.info("not rootUri specified, cannot save designMeta")
+      return
+    }
+
+    let assembliesUri = `${this.rootUri}/assemblies/default`
+
+    log.info("Saving assembly state", assembliesUri, "data",assemblyState)
+
+    let children = assemblyState || []
+    children = JSON.stringify(children)
+    //workaround for single/multi assemblies
+    assemblyState= {
+      name:"default",
+      children: children
+    }
+    let deferred = this.store.write(assembliesUri, assemblyState, {formatter:jsonToFormData})
+    return deferred
   }
 
   /*checks if a design exists*/
@@ -140,7 +161,7 @@ class TestApi{
 
   /*load the deign metadata*/
   loadDesignMeta(){
-    let designUri = `${this.rootUri}/design.json`;
+    let designUri = `${this.rootUri}`;
     log.info("Loading design meta from ",designUri)
 
     //NOTE : this is a cancellable q deferred, not a promise
@@ -172,13 +193,38 @@ class TestApi{
 
   /*load the bill of materials*/
   loadBom(){
-    let bomUri = `${this.rootUri}/${this.bomFileName}`;
+    let bomUri = `${this.rootUri}/bom`
     log.info("Loading bom from ",bomUri)
 
     //NOTE : this is a cancellable q deferred, not a promise
-    let rawBomPromise = this.store.read(bomUri).promise;
-    let rawBom$ = fromPromise(rawBomPromise);
-    return rawBom$.map( data => JSON.parse( data) );
+    let rawBomPromise = this.store.read(bomUri).promise
+    let rawBom$ = fromPromise(rawBomPromise)
+    return rawBom$.map( data => JSON.parse( data) )
+  }
+
+  saveBom(bom){
+    if(!this.rootUri){
+      log.info("not rootUri specified, cannot save designMeta")
+      return
+    }
+
+    let bomUri = `${this.rootUri}/bom`
+    log.info("saving bom from ",bomUri)
+
+    //FIXME: temporary workaround for ids/uuids
+    bom = JSON.parse(JSON.stringify(bom))
+    bom = bom.map(function(entry){entry.id = entry.uuid; return entry})
+    //bom = JSON.stringify(bom)
+
+    let self = this
+    //let deferred = this.store.write(bomUri, bom, {formatter:jsonToFormData, forceWrite:true})
+    bom.map(function(bomEntry){
+      let bomEntryUri = `${bomUri}/${bomEntry.uuid}`
+      bomEntry.title = bomEntry.name
+      let strBomEntry = JSON.stringify(bomEntry)
+      let deferred = self.store.write(bomEntryUri, strBomEntry, {formatter:jsonToFormData})
+    })
+
   }
 
   /*load meshName -> partUid mapping*/
@@ -302,11 +348,8 @@ class TestApi{
     
   }
   
-  saveAssemblyState( ){
-    let strForm = JSON.stringify( {assembly:this.activeDesign.activeAssembly} );
-    
-  }
-  
+ 
+ 
   /* temporary only */
   saveCustomEntityTypes( typesData ){
     console.log("saving custom entity types",typesData);
@@ -398,4 +441,4 @@ class TestApi{
 }
 
 
-export default TestApi
+export default TestApiYM
