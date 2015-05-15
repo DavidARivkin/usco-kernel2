@@ -140,7 +140,7 @@ class Kernel{
      this.meshInstancesToEntitiesMap.set( mesh, entity );
   }
   
-  duplicateEntity( originalEntity, addToAssembly=true ){
+  duplicateEntity( originalEntity ){
     log.info("duplicating entity", originalEntity)
 
     let entityType = this.partRegistry.partTypes[ originalEntity.typeUid ]
@@ -151,21 +151,14 @@ class Kernel{
     let onlyCopy = ["pos","rot","sca","color"]
 
     for(let key in originalEntity ){
-      console.log("key",key)
       if( onlyCopy.indexOf( key ) > -1 ){
-        dupe[key] = Object.assign([], originalEntity[key] )//FIXME: object vs array
+        dupe[key] = JSON.parse(JSON.stringify(originalEntity[key])) //Object.assign([], originalEntity[key] )
       }
     }
-    
     //FIXME : needs to work with all entity types
     //dupe.typeName + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1)
     dupe.name = originalEntity.name + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1)
     
-    if( addToAssembly )//entity instanceof Part )
-    {
-      this.registerPartInstance( dupe )
-      //TODO: how to deal with auto offset to prevent overlaps ?
-    }
     return dupe
   }
   
