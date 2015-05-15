@@ -105,12 +105,15 @@ class Kernel{
     TODO: change into getEntityMeshInstance
   */
   *getPartMeshInstance( entity ){
-    let mesh = yield this.partRegistry.getPartTypeMesh( entity.typeUid )
-    //log.error("entity",entity)
-    //TODO: perhaps do this differently: ie return a wrapper mesh with just a bounding
-    //box and "fill in"/stream in the mesh later ?
-    this.registerEntityMeshRel( entity, mesh );
-    return mesh;
+    let mesh = this.getMeshOfEntity(entity) //do we already have this one ?
+    if(!mesh){
+      console.log("GETING NEW MESH")
+      mesh = yield this.partRegistry.getPartTypeMesh( entity.typeUid )
+      //TODO: perhaps do this differently: ie return a wrapper mesh with just a bounding
+      //box and "fill in"/stream in the mesh later ?
+      this.registerEntityMeshRel( entity, mesh )
+    }
+    return mesh
   }
   
   makePartTypeInstance( partType ){
@@ -138,26 +141,29 @@ class Kernel{
   }
   
   duplicateEntity( originalEntity, addToAssembly=true ){
-    log.info("duplicating entity", originalEntity);
+    log.info("duplicating entity", originalEntity)
 
-    let entityType = this.partRegistry.partTypes[ originalEntity.typeUid ];
-    let dupe       = this.partRegistry.createTypeInstance( entityType );
+    let entityType = this.partRegistry.partTypes[ originalEntity.typeUid ]
+    let dupe       = this.partRegistry.createTypeInstance( entityType )
+
     //FIXME: do this correctly
-    let doNotCopy = ["iuid","name"];
-    let onlyCopy = ["pos","rot","sca"];
+    let doNotCopy = ["iuid","name"]
+    let onlyCopy = ["pos","rot","sca","color"]
+
     for(let key in originalEntity ){
-      console.log("key",key);
+      console.log("key",key)
       if( onlyCopy.indexOf( key ) > -1 ){
-        dupe[key] = Object.assign([], originalEntity[key] );//FIXME: object vs array
+        dupe[key] = Object.assign([], originalEntity[key] )//FIXME: object vs array
       }
     }
     
     //FIXME : needs to work with all entity types
-    dupe.name = dupe.typeName + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1);
+    //dupe.typeName + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1)
+    dupe.name = originalEntity.name + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1)
     
     if( addToAssembly )//entity instanceof Part )
     {
-      this.registerPartInstance( dupe );
+      this.registerPartInstance( dupe )
       //TODO: how to deal with auto offset to prevent overlaps ?
     }
     return dupe
@@ -340,6 +346,7 @@ class Kernel{
         if(object[fieldName] == "" ) {
           return Array.prototype.slice.call(object[fieldName]) 
         }
+        return object[fieldName]
       }
       self.activeDesign.authors = convertToArray(self.activeDesign,"authors")
       self.activeDesign.licenses = convertToArray(self.activeDesign,"licenses")
