@@ -75,7 +75,7 @@ class TestApi{
       let output = {}
       output.design = designMeta;
       output.bom = bom;
-      output.assemblies = assemblies;
+      output.assemblies = assemblies[0].default
       return output
     }
 
@@ -83,7 +83,7 @@ class TestApi{
       //console.log(data)
       let {design, bom, assemblies} = data;
       //we only care about the first assembly
-      let assembly = assemblies[0];
+      let assembly = assemblies //[0];
       //for every item in the assembly, fetch the needed data
 
       let output = Object.assign({}, data);
