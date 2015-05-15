@@ -21,6 +21,9 @@ function jsonToFormData(jsonData){
     if(Object.prototype.toString.call(value) === "[object Object]"){
       value = JSON.stringify(value)
     }
+    if(Object.prototype.toString.call(value) === "[object Array]"){
+      value = JSON.stringify(value)
+    }
 
     formData.append(fieldName, value)
   }
@@ -78,6 +81,10 @@ class TestApiYM{
       //console.log(designMeta, bom, assemblies) 
       let output = {}
       output.design = designMeta
+      output.design.authors = JSON.parse(designMeta.authors)
+      output.design.licenses = JSON.parse(designMeta.licenses)
+      output.design.tags     = JSON.parse(designMeta.tags)
+
       output.bom = bom
         //FIXME : remap because of current limitations
         .map( function(bomEntry) { 
@@ -85,6 +92,9 @@ class TestApiYM{
 
           return bomEntry} )
       output.assemblies = assemblies
+
+
+
       return output
     }
 
@@ -95,7 +105,10 @@ class TestApiYM{
       let assembly = assemblies//[0]
       //for every item in the assembly, fetch the needed data
 
+
       let output = Object.assign({}, data)
+
+
       /*let meshUrls = []
       bom.forEach(function(bomEntry){
         if(bomEntry && bomEntry.implementations && bomEntry.implementations.default){
