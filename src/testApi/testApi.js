@@ -25,13 +25,12 @@ function jsonToFormData(jsonData){
 
 class TestApi{
   constructor(){
-    this.apiUri    = "http://localhost:3080/api/";
-    this.designsUri = this.apiUri+"designs/";
+    this.apiUri    = "http://localhost:3080/api/"
+    this.designsUri = this.apiUri+"designs/"
     
-    this.designsUri = "http://jamapi.youmagine.com/api/v1/designs/";
-    //let designUri = "http://jamapi.youmagine.com/api/v1/designs/test";
-    this.rootUri    = undefined;
-    this.designName = undefined;
+    this.designsUri = undefined
+    this.rootUri    = undefined
+    this.designName = undefined
 
     this.assembliesFileName = "assemblies.json";//"assemblies_old.json";//"assemblies-simple.json"//
     this.bomFileName        = "bom.json";//"bom_old.json"//"bom.json";

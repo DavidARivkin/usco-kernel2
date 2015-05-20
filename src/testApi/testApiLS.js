@@ -12,17 +12,16 @@
     return meshNameToPartTypeUId;
   }
 
-
   saveAssemblyState( assembly ){
     //localstorage
-    let strForm = JSON.stringify( assembly );
-    localStorage.setItem("jam!-data-assembly", strForm );
+    let strForm = JSON.stringify( assembly )
+    localStorage.setItem("jam!-data-assembly", strForm )
   }
 
-  loadActiveAssemblyState( callback ){
+  loadAssemblyState( callback ){
     //local storage
-    let strAssembly = localStorage.getItem( "jam!-data-assembly" );
-    this.activeDesign.activeAssembly = new Assembly( strAssembly );
+    let strAssembly = localStorage.getItem( "jam!-data-assembly" )
+    return JSON.parse(strAssembly)
   }
   
   
