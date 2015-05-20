@@ -58,7 +58,7 @@ class Kernel{
     this.assetManager = undefined;
   }
 
-  setDesignAsPersistent(rootUri){
+  setDesignAsPersistent(flag,rootUri){
     log.info("setting design as persitent")
     //this.dataApi.rootUri
     //for now ,always assume YM api
@@ -68,11 +68,18 @@ class Kernel{
       if(storeName === "xhr" && uri.indexOf("jamapi.youmagine.com") > -1 ) return "YM"
       return storeName
     })*/
-    
-    let store = this.dataApi.store
-    this.dataApi = new (require("./testApi/testApiYM"))
-    this.dataApi.store = store
-    if(rootUri) this.dataApi.rootUri = rootUri
+
+    if(flag){
+      let store = this.dataApi.store
+      this.dataApi = new (require("./testApi/testApiYM"))
+      this.dataApi.store = store
+      if(rootUri) this.dataApi.rootUri = rootUri
+    }else{
+      let store = this.dataApi.store
+      this.dataApi = new (require("./testApi/testApi"))
+      this.dataApi.store = store
+      if(rootUri) this.dataApi.rootUri = rootUri
+    }
     
   }
   
@@ -107,7 +114,6 @@ class Kernel{
   *getPartMeshInstance( entity ){
     let mesh = this.getMeshOfEntity(entity) //do we already have this one ?
     if(!mesh){
-      console.log("GETING NEW MESH")
       mesh = yield this.partRegistry.getPartTypeMesh( entity.typeUid )
       //TODO: perhaps do this differently: ie return a wrapper mesh with just a bounding
       //box and "fill in"/stream in the mesh later ?
@@ -167,10 +173,7 @@ class Kernel{
   removeEntity( entity, cull=false ){
     this.activeAssembly.remove( entity );
     this.bom.unRegisterInstance( entity );
-    
-    //persist changes
-    this.saveAssemblyState();
-    
+        
     //remove entry not sure about this
     //this actually needs to be done on the visual side of things, not in the pure data layer
     /*let mesh = this.getMeshOfEntity( entity );
@@ -379,7 +382,6 @@ class Kernel{
         }
 
         //FIXME:hack
-        console.log("here", bomEntry)
         let partKlass = {typeUid:typeUid};
         let typeName  = "foo"+index;
         partKlass.prototype = {typeName:typeName,typeUid:typeUid}
