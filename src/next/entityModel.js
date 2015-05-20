@@ -54,13 +54,61 @@ let Entity = Bacon.combineTemplate(
 
 ).toProperty(defaults)
 
+//helpers
 
+
+
+///
 function makeMod$(intent){
+  let addEntityInstanceMods$ = intent.addEntityInstance$.map( (newEntityData, entities){
+
+    log.info("adding entity instance", newEntityData)
+    let nEntities  = this.state.assemblies_main_children
+    nEntities.push( instance )
+
+    let _entitiesById = this.state._entitiesById;
+    _entitiesById[instance.iuid] = instance;
+
+    this.setState({
+      _entitiesById:_entitiesById,
+      assemblies_main_children:nEntities
+    })
+
+  })
+
+  let deleteEntitiesMod$    = intent.deleteEntities$.map( (entityIds, entitites) =>{
+
+    log.info("removing entity instances", entityIds)
+   
+    let resultEntities = entitites
+      .map(entity=>entity.iuid)
+      .filter(function(iuid){ return entityIds.indexOf(iuid)===-1})
+
+    return resultEntities 
+  })
+
+  let duplicateEntitiesMod$ = intent.duplicateEntities$.map((instances) => {
+      log.info("duplicating entity instances", instances)
+      let self  = this
+      let dupes = []
+
+      instances.map(function(instance){
+        let duplicate = self.kernel.duplicateEntity(instance)
+        dupes.push( duplicate )
+        //FIXME: this is redundant  
+        self.addEntityInstance(duplicate)
+      })
+      return dupes
+  })
+
+  let selectEntitiesMod$ = intent.selectEntities$.map( (entityIds, entities){
+
+  })
 
 
   //all the different "actions/observables that can change our model"
   return merge(
-    addEntityInstances$, deleteEntities$, selectEntities$, duplicateEntities$,
+    addEntityInstanceMods$, deleteEntitiesMod$, selectEntities$, duplicateEntitiesMod$,
     setEntityData$
   )
 }
@@ -72,7 +120,7 @@ function model__Entities(intent, source) {
 
   return modification$
     .merge(source.todosData$)
-    .scan((todosData, modFn) => modFn(todosData))
+    .scan((todosData, modFn) => modFn(todosData))//initial value v2
     .combineLatest(route$, determineFilter)
     .shareReplay(1)
 }
