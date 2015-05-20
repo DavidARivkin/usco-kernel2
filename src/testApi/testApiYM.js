@@ -35,7 +35,7 @@ class TestApiYM{
     this.apiUri    = "http://localhost:3080/api/"
     this.designsUri = this.apiUri+"designs/"
     
-    this.designsUri = "http://jamapi.youmagine.com/api/v1/designs/"
+    this.designsUri = "https://jamapi.youmagine.com/api/v1/designs/"
     //let designUri = "http://jamapi.youmagine.com/api/v1/designs/test"
     this.rootUri    = undefined
     this.designName = undefined
@@ -192,14 +192,13 @@ class TestApiYM{
       log.info("not rootUri specified, cannot save designMeta")
       return
     }
+    if(!designMeta.name) throw new Error("invalid design name:'",designMeta.name,"'")
 
     let designUri = this.designsUri+normalizeString(designMeta.name)
     if(!this.rootUri){
       this.rootUri = designUri
     }
 
-    //FIXME: temporary hack
-    designMeta.title = designMeta.name
     //setDesignName
     log.info("Saving design meta to ", designUri, "data",designMeta)
 
@@ -225,7 +224,7 @@ class TestApiYM{
     }
 
     let bomUri = `${this.rootUri}/bom`
-    log.info("saving bom from ",bomUri)
+    log.info("saving bom to ",bomUri)
 
     //FIXME: temporary workaround for ids/uuids
     bom = JSON.parse(JSON.stringify(bom))
