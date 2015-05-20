@@ -1,13 +1,34 @@
 import Q from 'q'
-import co from 'co'
 import { generateUUID, hashCode, nameCleanup } from "./utils"
 import Part from "./Part"
+
+import {computeBoundingBox,computeBoundingSphere} from 'glView-helpers/src/meshTools/computeBounds'
 
 import logger from 'log-minim'
 
 let log = logger("PartRegistry")
 log.setLevel("debug")
 
+
+//experiment with generators
+function meshResolver(){
+  //let mesh = undefined 
+  let inner = function* (mesh){
+    if(mesh) yield mesh
+  }
+  function resolve(mesh)
+  {
+    //mesh = mesh
+    inner.next(mesh)
+  }
+  /*return function* meshGen(mesh){
+    yield mesh
+  }*/
+  return {
+    resolve:resolve,
+    promise:inner
+  }
+}
 
 //FIXME: how much of an overlap with bom ?
 //FIXME: how much of an overlap with asset manager?
@@ -57,13 +78,19 @@ class PartRegistry{
     this will be used as a basic MESH instance to clone for all instances
   */
   addTemplateMeshForPartType( mesh, typeUid ){
+    log.info("adding template mesh for part type")
+
     if( ! this._partTypeMeshTemplates[ typeUid ] ){
       
       this._partTypeMeshTemplates[ typeUid ] = mesh
+
+      console.log("computing bounds of mesh")
+      computeBoundingSphere(mesh)
+      computeBoundingBox(mesh)
+      console.log(mesh.boundingBox)
       
       //anybody waiting for that mesh yet ?
       if( this._partTypeMeshWaiters[ typeUid ] ){
-        console.log("resolving mesh of ", typeUid )
         this._partTypeMeshWaiters[ typeUid ].resolve( mesh )
       }
     }
@@ -187,35 +214,49 @@ class PartRegistry{
     return part
   }
   
+
+  //alternative , reactive implementation
+  _getPartTypeMesh(typeUid, original=false){
+
+
+    _partTypeMeshWaiters[ typeUid ]
+      .map()
+  }
+
     
   /* wrapper abstracting whether one needs to wait for the part's mesh or not
   */
   *getPartTypeMesh( typeUid, original=false ){
     if(!typeUid) throw new Error("no typeUid specified")
+
     if( ! this._partTypeMeshTemplates[ typeUid ] && ! this._partTypeMeshWaiters[ typeUid ] ){
       throw new Error(`No matching mesh found for type : ${typeUid}`)
     }
     
     if( ! this._partTypeMeshWaiters[ typeUid ] ) {
-      this._partTypeMeshWaiters[ typeUid ] = Q.defer()
+      this._partTypeMeshWaiters[ typeUid ] =  Q.defer() //meshResolver()
     }
     
     if( this._partTypeMeshTemplates[ typeUid ] ){
       let mesh = this._partTypeMeshTemplates[ typeUid ] 
-      //console.log("mesh", mesh)
       this._partTypeMeshWaiters[ typeUid ].resolve( mesh )
-      //let mesh = yield this._partTypeMeshWaiters[ typeUid ]
     }
     
-    //partMeshesToWaitFor.push( self.partWaiters[ typeUid ].promise )
     let mesh = yield this._partTypeMeshWaiters[ typeUid ].promise
     //we have not been asked for the original mesh, get a copy instance
+
+    //console.log("here, mesh",mesh)
+
     if( !original ){
       log.info("getting a clone")
 
       let newMaterial = mesh.material.clone()
-      mesh = mesh.clone()
-      mesh.material = newMaterial
+      let newMesh = mesh.clone()
+      newMesh.boundingBox = mesh.boundingBox
+      newMesh.boundingSphere = mesh.boundingSphere
+      newMesh.material = newMaterial
+
+      mesh = newMesh
 
     }
     return mesh
