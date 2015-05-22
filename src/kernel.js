@@ -80,7 +80,28 @@ class Kernel{
       this.dataApi.store = store
       if(rootUri) this.dataApi.rootUri = rootUri
     }
-    
+  }
+
+  testStuff(){
+    let apiPath = "https://jamapi.youmagine.com/api/v1/designs/k61g98eJ"
+
+    let store = this.dataApi.store
+    this.dataApi = new (require("./testApi/testApiYM"))
+    this.dataApi.store = store
+    this.dataApi.rootUri = apiPath
+    let assembly = {
+      "name": " bar",
+      "pos": [],
+      "rot": [],
+      "sca": [],
+      "children": [
+       { "name": " child1",
+         "pos": [0,0,0],
+         "rot": [0,0,0],
+         "sca": [0,0,0]}
+      ],
+    }
+    this.dataApi.saveAssemblyState(assembly)
   }
   
   registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
@@ -244,10 +265,16 @@ class Kernel{
     if(bom) return this.dataApi.saveBom(bom)
   }
 
+  saveAnnotations( annotations ){
+    log.info("saving annotations")
+    if(annotations) return this.dataApi.saveAnnotations(annotations)
+  }
+
   /*load a design from the given uri*/
   loadDesign( uri, options ){
-    let deferred = Q.defer();
-    let self     = this;
+    log.info("loading design")
+    let deferred = Q.defer()
+    let self     = this
 
     //determine the "fs/store/api to use"
     let {storeName,undefined} = parseFileUri(uri, function YMFSMatcher(storeName,uri,fileName){
@@ -260,11 +287,9 @@ class Kernel{
       this.dataApi.store = store
     }
 
+    let $designData = this.dataApi.loadFullDesign(uri,options)
 
-
-    let $designData = this.dataApi.loadFullDesign(uri,options);
-
-    $designData =  $designData.take(1).share();
+    $designData =  $designData.take(1).share()
 
     function logNext( next ){
       log.info( next )
@@ -284,7 +309,6 @@ class Kernel{
         parsing:{useWorker:true,useBuffers:true} 
       }
 
-     
       function registerMeshAsTypeTemplate(mesh){
         //add mesh as template for its type
         log.info("setting ",mesh,"as template of ",typeUid)
@@ -328,12 +352,12 @@ class Kernel{
 
       self.activeDesign = new Design(design)
       self.activeDesign.activeAssembly = new Assembly( assemblies )//[0] )
+console.log("loaded design ", design, self.activeDesign)
 
+      self.activeDesign.uuid = design.uuid
       //apply a few potential fixes
       self.activeDesign.activeAssembly.children = self.activeDesign.activeAssembly.children || []
-      //self.activeDesign.authors = self.activeDesign.authors || []
-      //self.activeDesign.licenses = self.activeDesign.licenses || []
-      //self.activeDesign.tags     = self.activeDesign.tags || []
+
 
       function convertToArray(object, fieldName){
         if(!object[fieldName]){
