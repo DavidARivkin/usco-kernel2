@@ -61,23 +61,33 @@ class TestApiYM{
     //check if design root exists
     this.rootUri = designUri
 
+    let empty = Rx.Observable.return('default value')
+    function onError(error){
+      console.log("yeah",error)
+      return empty
+    }
+
     //fetch design.json
-    let $designMeta = this.loadDesignMeta()
-    
+    let designMeta$ = this.loadDesignMeta()
+      .catch(onError)
+    /*  .map(function(designMeta){
+        console.log("designMeta",designMeta)
+      })*/
     //fetch bom.json
-    let $bom = this.loadBom()
+    let bom$ = this.loadBom()
+      .catch(onError)
 
     //fetch assemblies.json
-    let $assembly = this.loadAssemblyState()
-    
-    //fetch mapping type->uid
-    //this.loadMeshNameToPartTypeUId()
+    let assembly$ = this.loadAssemblyState()
+      .catch(function(error){
+        console.log("error in fetching assemblies",error)
+        return Rx.Observable.return([])
+      })
 
-    //fetch needed meshes
-    //let $meshes = this.loadMeshes()
+    let annotations$ = this.loadAnnotations()
+      .catch(onError)
 
-
-    function generateOutputData(designMeta, bom, assemblies){
+    function generateOutputData(designMeta, bom, assemblies, annotations){
       //console.log(designMeta, bom, assemblies) 
       let output = {}
       output.design = designMeta
@@ -89,45 +99,31 @@ class TestApiYM{
         //FIXME : remap because of current limitations
         .map( function(bomEntry) { 
           if(bomEntry.uuid){bomEntry.id= bomEntry.uuid}
+          return bomEntry
+        })
 
-          return bomEntry} )
       output.assemblies = assemblies
-
-
+      output.annotations = annotations
 
       return output
     }
 
     function getNeededMeshesData(data){
-      //console.log(data)
+      console.log("DATA",data)
       let {design, bom, assemblies} = data
       //we only care about the first assembly
       let assembly = assemblies//[0]
       //for every item in the assembly, fetch the needed data
-
-
       let output = Object.assign({}, data)
-
-
-      /*let meshUrls = []
-      bom.forEach(function(bomEntry){
-        if(bomEntry && bomEntry.implementations && bomEntry.implementations.default){
-          let meshFileUri = bomEntry.implementations.default
-          meshUrls.push( meshFileUri )
-        }
-      })
-      output._neededMeshUrls = meshUrls*/
-      //let meshNameToTypeUidUri = {}
-      //this.partRegistry._meshNameToPartTypeUId = meshNameToTypeUidUri
-
       //now that we have the list of files that we need, load those
       return output
     }
 
-    var source = Rx.Observable.combineLatest(
-        $designMeta,
-        $bom,
-        $assembly,
+    let source = Rx.Observable.combineLatest(
+        designMeta$,
+        bom$,
+        assembly$,
+        annotations$,
         generateOutputData
     )
       .take(1)
@@ -194,10 +190,10 @@ class TestApiYM{
     }
     if(!designMeta.name) throw new Error("invalid design name:'",designMeta.name,"'")
 
-    let designUri = this.designsUri+normalizeString(designMeta.name)
+    /*let designUri = this.designsUri+normalizeString(designMeta.name)
     if(!this.rootUri){
       this.rootUri = designUri
-    }
+    }*/
 
     //setDesignName
     log.info("Saving design meta to ", designUri, "data",designMeta)
@@ -241,6 +237,27 @@ class TestApiYM{
     })
 
   }
+
+  saveAnnotations(annotations){
+    if(!this.rootUri){
+      log.info("not rootUri specified, cannot save annotations")
+      return
+    }
+
+    let annotUri = `${this.rootUri}/annotations`
+    log.info("saving annotations to ",annotUri)
+  }
+
+  loadAnnotations(){
+    let annotUri = `${this.rootUri}/annotations`
+    log.info("Loading annotations from ",annotUri)
+
+    //NOTE : this is a cancellable q deferred, not a promise
+    let rawAnnotPromise = this.store.read(annotUri).promise
+    let rawAnnot$ = fromPromise(rawAnnotPromise)
+    return rawAnnot$.map( data => JSON.parse( data) )
+  }
+
 
   /*load meshName -> partUid mapping*/
   loadMeshNameToPartTypeUId(){
@@ -301,8 +318,6 @@ class TestApiYM{
     let cleanedFileName = normalizeString(path)
     let fileUri = `${this.rootUri}/documents/${cleanedFileName}`
 
-
-
     let rawPromise = this.store.read(fileUri).promise
     fromPromise(rawPromise)
       .subscribe(function(data){
@@ -356,12 +371,9 @@ class TestApiYM{
     //now that we have the list of files that we need, load those
     this.loadDocsOfDesign( callback )
     
-    return this.activeDesign
-    
+    return this.activeDesign  
   }
-  
- 
- 
+
   /* temporary only */
   saveCustomEntityTypes( typesData ){
     console.log("saving custom entity types",typesData)
