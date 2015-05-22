@@ -1,16 +1,16 @@
 
 //TODO: taken from three.js ,do correct attribution
-var generateUUID = function () {
+export function generateUUID() {
 
 	// http://www.broofa.com/Tools/Math.uuid.htm
 
-	var chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split( '' );
-	var uuid = new Array( 36 );
-	var rnd = 0, r;
+	let chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split( '' );
+	let uuid = new Array( 36 );
+	let rnd = 0, r;
 
 	return function () {
 
-		for ( var i = 0; i < 36; i ++ ) {
+		for ( let i = 0; i < 36; i ++ ) {
 
 			if ( i == 8 || i == 13 || i == 18 || i == 23 ) {
 
@@ -30,14 +30,13 @@ var generateUUID = function () {
 			}
 		}
 
-		return uuid.join( '' );
+		return uuid.join( '' )
 
-	};
+	}()
+}
 
-}()
-
-var hashCodeFromString = function(s){
-  return s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);              
+export function hashCodeFromString(s){
+  return s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)           
 }
 
 function camelCase (string) {
@@ -53,7 +52,7 @@ function camelCase2 (string) {
 }
 
 //TODO: do this better
-var nameCleanup = function( name ){
+export function nameCleanup( name ){
    let cName = name.substr(0, name.lastIndexOf('.')); 
    //cName = cName.replace(/_/g, '').replace(/-/g, '');
    cName = camelCase(cName);
@@ -63,8 +62,6 @@ var nameCleanup = function( name ){
 }
 
 /*generate a url-valid string from the input string :ie remove spaces, */
-function normalizeString(string){
+export function normalizeString(string){
   return string.toLowerCase().replace(/\./g, '-').replace(/ /g, '-')
 }
-
-export { generateUUID, hashCodeFromString, nameCleanup, normalizeString };
