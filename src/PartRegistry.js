@@ -84,10 +84,9 @@ class PartRegistry{
       
       this._partTypeMeshTemplates[ typeUid ] = mesh
 
-      console.log("computing bounds of mesh")
+      //console.log("computing bounds of mesh")
       computeBoundingSphere(mesh)
       computeBoundingBox(mesh)
-      console.log(mesh.boundingBox)
       
       //anybody waiting for that mesh yet ?
       if( this._partTypeMeshWaiters[ typeUid ] ){
