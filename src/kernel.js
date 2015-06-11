@@ -30,37 +30,98 @@ import helpers         from 'glView-helpers'
 let centerMesh         = helpers.mesthTools.centerMesh;
 
 
+function registerMeshAsTypeTemplate(mesh){
+  //add mesh as template for its type
+  log.info("setting ",mesh,"as template of ",typeUid)
+  this.partRegistry.addTemplateMeshForPartType( mesh.clone(), typeUid )
+  return mesh
+}
+
+function loadMeshAndRegisterItAsTemplate(uriOrData, typeUid, self, parentUri, storeName){
+      
+  let meshLoadParams= {
+    parentUri,
+    keepRawData:true, 
+    parsing:{useWorker:true,useBuffers:true} 
+  }
+
+  //FIXME: big hACK!!
+  if(storeName === "YM"){
+   
+   return self.dataApi.__loadFileUrl(uriOrData)
+    .map(function(uriOrData){
+      let resource = self.assetManager.load( uriOrData, meshLoadParams )
+      //return fromPromise(resource.deferred.promise)
+      return resource.deferred.promise
+    })
+    .flatMap(fromPromise)
+    .pluck('data')
+    .map(postProcessMesh)
+    .map(centerMesh)
+    .map(registerMeshAsTypeTemplate.bind(self))
+    .take(1)
+
+  }else{
+    uriOrData = "./"+uriOrData
+    let resource = self.assetManager.load( uriOrData, meshLoadParams )
+    var $mesh = fromPromise(resource.deferred.promise)
+
+    return $mesh
+    .pluck('data')
+    .map(postProcessMesh)
+    .map(centerMesh)
+    .map(registerMeshAsTypeTemplate)
+    .take(1)
+  }
+}
+
+ function hackInjectPartType (typeUid, index, partRegistry, bom, bomEntry){
+  //FIXME:hack
+  let partKlass = {typeUid:typeUid}
+  let typeName  = "foo"+index
+  partKlass.prototype = {typeName:typeName,typeUid:typeUid}
+  
+  let klass = partRegistry.makeNamedPartKlass( typeName, typeUid )
+  partRegistry.registerPartType( klass, typeName, typeUid )
+  bom.registerPartType( klass )
+  bom.registerImplementation2(typeUid,{},"default",bomEntry.implementations.default)
+   //self.registerPartType(undefined, undefined, undefined, {name:bomEntry.title});
+  //part=undefined, source=undefined, mesh=undefined
+  //null, null, shape, {name:resource.name, resource:resource}
+}
+
+
 class Kernel{
   constructor(stateIn={}){
     //stateIn is just a hack for now
-    this.stateIn = stateIn;
+    this.stateIn = stateIn
 
   
-    this.partRegistry = new PartRegistry();
+    this.partRegistry = new PartRegistry()
     
     //not sure at ALL
-    this.activeDesign = new Design();
+    this.activeDesign = new Design()
     
     //essential
-    this.activeAssembly = this.activeDesign.activeAssembly;
+    this.activeAssembly = this.activeDesign.activeAssembly
     
     //this should be PER assembly
-    this.entitiesToMeshInstancesMap = new WeakMap();
-    this.meshInstancesToEntitiesMap = new WeakMap();//reverse map
+    this.entitiesToMeshInstancesMap = new WeakMap()
+    this.meshInstancesToEntitiesMap = new WeakMap()//reverse map
     
     //not sure
     this.bom = new Bom();
     
     //not sure
-    this.dataApi = new TestApi();
+    this.dataApi = new TestApi()
     
     //not sure
-    this.assetManager = undefined;
+    this.assetManager = undefined
   }
 
   setDesignAsPersistent(flag,rootUri){
-    log.info("setting design as persitent")
-    //this.dataApi.rootUri
+    //log.info("setting design as persitent")
+    
     //for now ,always assume YM api
 
     //determine the "fs/store/api to use"
@@ -68,16 +129,20 @@ class Kernel{
       if(storeName === "xhr" && uri.indexOf("jamapi.youmagine.com") > -1 ) return "YM"
       return storeName
     })*/
-
+    //FIXME: horrible !!! 
     if(flag){
       let store = this.dataApi.store
+      let _rootUri = this.dataApi.rootUri
       this.dataApi = new (require("./testApi/testApiYM"))
       this.dataApi.store = store
+      this.dataApi.rootUri = _rootUri
       if(rootUri) this.dataApi.rootUri = rootUri
     }else{
       let store = this.dataApi.store
+      let _rootUri = this.dataApi.rootUri
       this.dataApi = new (require("./testApi/testApi"))
       this.dataApi.store = store
+      this.dataApi.rootUri = _rootUri
       if(rootUri) this.dataApi.rootUri = rootUri
     }
   }
@@ -229,14 +294,6 @@ class Kernel{
   }
   
   //////////////////////////
-  //FIXME: remove this, annotation specific
-  addAnnotation( annotation ){
-    this.annotations.push( annotation );
-    
-    //this.activeAssembly.push( annotation );
-    //this changes the assembly so ..save it
-    //this.saveAssemblyState();
-  }
   
   /*resets everything to empty*/
   clearAll(){
@@ -276,6 +333,16 @@ class Kernel{
     let deferred = Q.defer()
     let self     = this
 
+    function logNext( next ){
+      log.info( next )
+    }
+    function logError( err){
+      log.error(err)
+    }
+    function logDone( data) {
+      log.info("DONE",data)
+    }
+
     //determine the "fs/store/api to use"
     let {storeName,undefined} = parseFileUri(uri, function YMFSMatcher(storeName,uri,fileName){
       if(storeName === "xhr" && uri.indexOf("jamapi.youmagine.com") > -1 ) return "YM"
@@ -287,77 +354,36 @@ class Kernel{
       this.dataApi.store = store
     }
 
-    let $designData = this.dataApi.loadFullDesign(uri,options)
+    let designData$ = this.dataApi.loadFullDesign(uri,options)
 
-    $designData =  $designData.take(1).share()
+    designData$ = designData$
+      .take(1)
+      .share()
 
-    function logNext( next ){
-      log.info( next )
-    }
-    function logError( err){
-      log.error(err)
-    }
-    function logDone( data) {
-      log.info("DONE",data)
-    }
-    
-    function loadMeshAndRegisterItAsTemplate(uriOrData, typeUid){
-      
-      let meshLoadParams= {
-        parentUri:uri,
-        keepRawData:true, 
-        parsing:{useWorker:true,useBuffers:true} 
-      }
-
-      function registerMeshAsTypeTemplate(mesh){
-        //add mesh as template for its type
-        log.info("setting ",mesh,"as template of ",typeUid)
-        self.partRegistry.addTemplateMeshForPartType( mesh.clone(), typeUid )
-        return mesh
-      }
-
-      //FIXME: big hACK!!
-      if(storeName === "YM"){
-       
-       return self.dataApi.__loadFileUrl(uriOrData)
-        .map(function(uriOrData){
-          let resource = self.assetManager.load( uriOrData, meshLoadParams )
-          //return fromPromise(resource.deferred.promise)
-          return resource.deferred.promise
+    function getNeededTypeIds(assemblyNode){
+      let neededTypeUids = new Set()
+      assemblyNode.children
+        .map(function(child){
+          neededTypeUids.add( child.typeUid )
         })
-        .flatMap(fromPromise)
-        .pluck('data')
-        .map(postProcessMesh)
-        .map(centerMesh)
-        .map(registerMeshAsTypeTemplate)
-        .take(1)
-      }else{
-        uriOrData = "./"+uriOrData
-        let resource = self.assetManager.load( uriOrData, meshLoadParams )
-        var $mesh = fromPromise(resource.deferred.promise)
-
-        return $mesh
-        .pluck('data')
-        .map(postProcessMesh)
-        .map(centerMesh)
-        .map(registerMeshAsTypeTemplate)
-        .take(1)
-      }
+      log.info("needed types",neededTypeUids)
+      return neededTypeUids
     }
 
-    return $designData.map(function(data)
+    designData$ = designData$.map(function(data)
     {
 
-      let {design, bom, assemblies} = data;
+      let {design, bom, assemblies} = data
 
       self.activeDesign = new Design(design)
       self.activeDesign.activeAssembly = new Assembly( assemblies )//[0] )
-console.log("loaded design ", design, self.activeDesign)
+      console.log("loaded design ", design, self.activeDesign)
 
       self.activeDesign.uuid = design.uuid
       //apply a few potential fixes
       self.activeDesign.activeAssembly.children = self.activeDesign.activeAssembly.children || []
 
+      //let assemblies = assemblies
 
       function convertToArray(object, fieldName){
         if(!object[fieldName]){
@@ -375,50 +401,25 @@ console.log("loaded design ", design, self.activeDesign)
       self.activeAssembly = self.activeDesign.activeAssembly
 
       //get the list of typeUids
-      let neededTypeUids = new Set();
-      self.activeDesign.activeAssembly.children.map(function(child){
-        neededTypeUids.add( child.typeUid );
-      })
-
-      log.info(neededTypeUids)
-
+      let neededTypeUids =getNeededTypeIds(self.activeDesign.activeAssembly)
+    
       //now fetch the uris of the corresponding bom entry implems
-      let uris = [];
-      let combos = {};
-      let registrations = [];
+      let combos = {}
+      let registrations = []
 
-      //let tmpOutputBom = Object.assign([],bom);
-      //let tmpOutputAssembly = Object.assign({},assemblies[0])
-
-      let index = 0;
+      let index = 0
       bom.map(function(bomEntry){
-        //let key = bomEntry.description.split("part ").pop();
-        //let typeUid = parseInt(key)
-        let typeUid = bomEntry.id;
+        let typeUid = bomEntry.id
 
         if(neededTypeUids.has(typeUid)){
-          let binUri = bomEntry.implementations.default;
-          //console.log("PLEASE LOAD",bomEntry.implementations.default);
-          combos[typeUid] = binUri;
-
+          let binUri = bomEntry.implementations.default
+          combos[typeUid] = binUri
           //DO THE LOADINNG!!
-          registrations.push( loadMeshAndRegisterItAsTemplate( binUri, typeUid ) );
+          registrations.push( loadMeshAndRegisterItAsTemplate( binUri, typeUid, self, uri, storeName ) )
         }
 
-        //FIXME:hack
-        let partKlass = {typeUid:typeUid};
-        let typeName  = "foo"+index;
-        partKlass.prototype = {typeName:typeName,typeUid:typeUid}
-        
-        let klass = self.partRegistry.makeNamedPartKlass( typeName, typeUid )
-        self.partRegistry.registerPartType( klass, typeName, typeUid )
-        self.bom.registerPartType( klass )
-        //self.bom
-        self.bom.registerImplementation2(typeUid,{},"default",bomEntry.implementations.default)
-
-        //self.registerPartType(undefined, undefined, undefined, {name:bomEntry.title});
-        //part=undefined, source=undefined, mesh=undefined
-        //null, null, shape, {name:resource.name, resource:resource}
+        //note, index is even more useless than the rest
+        hackInjectPartType(typeUid, index, self.partRegistry, self.bom, bomEntry)
       })
 
       //FIXME: ugh, why do we need to re-iterate?
@@ -430,12 +431,14 @@ console.log("loaded design ", design, self.activeDesign)
 
       return registrations
     })
-    .map(function(regs){
-      console.log("regs",regs)
-      return regs
-    })
-    .flatMap(Rx.Observable.from)
-    .mergeAll()
+    .shareReplay(1)
+
+    //deal with loading stuff
+    designData$
+      .flatMap(Rx.Observable.from)
+      .mergeAll()
+
+    return designData$
   }
 
 
