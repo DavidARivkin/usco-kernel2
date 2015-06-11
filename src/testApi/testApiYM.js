@@ -51,6 +51,7 @@ class TestApiYM{
 
   //FIXME: not sure about this ?
   setDesignName(name){
+    log.info("setting designName")
     this.rootUri = this.designsUri+"/"+name
     //check if the name is taken ?
   }
@@ -150,7 +151,7 @@ class TestApiYM{
       log.info("not rootUri specified, cannot save designMeta")
       return
     }
-
+    console.log("saving assembly state",assemblyState)
     let assembliesUri = `${this.rootUri}/assemblies/default`
 
     log.info("Saving assembly state", assembliesUri, "data",assemblyState)
@@ -194,11 +195,20 @@ class TestApiYM{
     if(!this.rootUri){
       this.rootUri = designUri
     }*/
+    let options = {formatter:jsonToFormData}
+    let designUri = designMeta.uri 
+
+    //if we do not have an uri yet:
+    if(!designUri){
+      designUri = this.designsUri 
+      //force update
+      options.forceWrite = true
+    }
 
     //setDesignName
     log.info("Saving design meta to ", designUri, "data",designMeta)
 
-    let deferred = this.store.write(designUri, designMeta, {formatter:jsonToFormData})
+    let deferred = this.store.write(designUri, designMeta, options)
     return deferred
   }
 
@@ -239,6 +249,7 @@ class TestApiYM{
   }
 
   saveAnnotations(annotations){
+    
     if(!this.rootUri){
       log.info("not rootUri specified, cannot save annotations")
       return
