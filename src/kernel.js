@@ -370,36 +370,67 @@ class Kernel{
       return neededTypeUids
     }
 
-    designData$ = designData$.map(function(data)
-    {
-
-      let {design, bom, assemblies} = data
-
-      self.activeDesign = new Design(design)
-      self.activeDesign.activeAssembly = new Assembly( assemblies )//[0] )
-      console.log("loaded design ", design, self.activeDesign)
-
-      self.activeDesign.uuid = design.uuid
-      //apply a few potential fixes
-      self.activeDesign.activeAssembly.children = self.activeDesign.activeAssembly.children || []
-
-      //let assemblies = assemblies
-
-      function convertToArray(object, fieldName){
-        if(!object[fieldName]){
-          return []
-        }
-        if(object[fieldName] == "" ) {
-          return Array.prototype.slice.call(object[fieldName]) 
-        }
-        return object[fieldName]
+    function convertToArray(object, fieldName){
+      if(!object[fieldName]){
+        return []
       }
-      self.activeDesign.authors = convertToArray(self.activeDesign,"authors")
-      self.activeDesign.licenses = convertToArray(self.activeDesign,"licenses")
-      self.activeDesign.tags     = convertToArray(self.activeDesign,"tags")
-      
-      self.activeAssembly = self.activeDesign.activeAssembly
+      if(object[fieldName] == "" ) {
+        return Array.prototype.slice.call(object[fieldName]) 
+      }
+      return object[fieldName]
+    }
 
+    return designData$
+      .map(function(data)
+      {
+        let {design, bom, assemblies, annotations} = data
+        let parentUri = uri
+
+        //make sure we get arrays back
+        design.authors  = convertToArray(design,"authors")
+        design.licenses = convertToArray(design,"licenses")
+        design.tags     = convertToArray(design,"tags")
+
+        //we need this combo {uri, typeUid, mesh}
+        //uris need to be sent
+
+        //typeUids
+        //these are all the types (uids) used in current design
+        let neededTypeUids =getNeededTypeIds(assemblies)
+
+        let stuff = bom.map(function(bomEntry){
+          let typeUid = bomEntry.id
+
+          if(neededTypeUids.has(typeUid)){
+            let binUri = bomEntry.implementations.default
+            //TODO : use method 
+            //binUri=parentUri+"/documents/"+binUri
+            
+            return {uri:binUri, typeUid}
+          }
+          return undefined
+        })
+
+
+        let meshSources$ = Rx.Observable
+          .from( stuff )
+          .shareReplay(1)
+
+        meshSources$ = meshSources$
+          .flatMap(function(data){
+            return self.dataApi.__loadFileUrl(data.uri)
+          })
+          .zip(meshSources$, function(realUri, entry){
+            return {uri:realUri, typeUid:entry.typeUid}
+          })
+
+        return {design, bom, assemblies, annotations, meshSources$}
+      })
+
+    
+  
+    designData$ = designData$.map(function(data)
+    {      
       //get the list of typeUids
       let neededTypeUids =getNeededTypeIds(self.activeDesign.activeAssembly)
     
@@ -437,8 +468,6 @@ class Kernel{
     designData$
       .flatMap(Rx.Observable.from)
       .mergeAll()
-
-    return designData$
   }
 
 

@@ -10,6 +10,13 @@ log.setLevel("debug")
 import {normalizeString} from '../utils'
 
 
+//TODO turn this into a function of design uri ?
+
+function YMAPI(designUri){
+  //return some data streams/observables
+}
+
+
 function jsonToFormData(jsonData){
   let jsonData = JSON.parse( JSON.stringify( jsonData ) )
   let formData = new FormData()
