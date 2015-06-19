@@ -369,6 +369,10 @@ class Kernel{
 
         //we need this combo {uri, typeUid, mesh}
         //uris need to be sent
+        bom = bom
+          .map(function(entry){
+            entry.name = entry.title;
+            return entry})
 
         //typeUids
         //these are all the types (uids) used in current design
@@ -390,15 +394,20 @@ class Kernel{
 
         let meshSources$ = Rx.Observable
           .from( stuff )
+          .filter( x => x!==undefined )
           .shareReplay(1)
 
         meshSources$ = meshSources$
           .flatMap(function(data){
-            return self.dataApi.__loadFileUrl(data.uri)
+            return self.dataApi.__getFileRealPath(data.uri)
+              .catch(Rx.Observable.just(undefined)) //not perfect ,but this way we handle errors
           })
           .zip(meshSources$, function(realUri, entry){
-            return {uri:realUri, typeUid:entry.typeUid}
+            if(realUri !== undefined){
+              return {uri:realUri, typeUid:entry.typeUid}
+            }
           })
+          .filter( x => x!==undefined )
 
         return {design, bom, assemblies, annotations, meshSources$}
       })
