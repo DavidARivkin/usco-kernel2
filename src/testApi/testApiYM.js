@@ -255,15 +255,27 @@ class TestApiYM{
 
   }
 
-  saveAnnotations(annotations){
+  saveAnnotations(annotations, rootUri){
     
     if(!this.rootUri){
       log.info("not rootUri specified, cannot save annotations")
       return
     }
 
+    annotations = annotations.map( entry => {entry.type_uid = entry.typeUid; return entry} ) //Temp hack / fix
+
     let annotUri = `${this.rootUri}/annotations`
     log.info("saving annotations to ",annotUri)
+
+    let self = this
+    let deferreds = []
+    annotations.map(function(annotEntry){
+      let annotEntryUri = `${annotUri}/${annotEntry.iuid}`
+      let deferred = self.store.write(annotEntryUri, annotEntry, {formatter:jsonToFormData})
+      deferreds.push( deferred )
+    })
+    
+    return deferreds
   }
 
   loadAnnotations(){
