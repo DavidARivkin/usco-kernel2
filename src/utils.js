@@ -53,12 +53,12 @@ function camelCase2 (string) {
 
 //TODO: do this better
 export function nameCleanup( name ){
-   let cName = name.substr(0, name.lastIndexOf('.')); 
+   let cName = name.substr(0, name.lastIndexOf('.'))
    //cName = cName.replace(/_/g, '').replace(/-/g, '');
-   cName = camelCase(cName);
-   cName = camelCase2(cName);
+   cName = camelCase(cName)
+   cName = camelCase2(cName)
    //cName = cName.replace("_","").replace("-","");
-   return cName;
+   return cName
 }
 
 /*generate a url-valid string from the input string :ie remove spaces, */
