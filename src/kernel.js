@@ -110,7 +110,7 @@ class Kernel{
     this.meshInstancesToEntitiesMap = new WeakMap()//reverse map
     
     //not sure
-    this.bom = new Bom();
+    this.bom = new Bom()
     
     //not sure
     this.dataApi = new TestApi()
@@ -232,28 +232,6 @@ class Kernel{
      this.meshInstancesToEntitiesMap.set( mesh, entity );
   }
   
-  duplicateEntity( originalEntity ){
-    log.info("duplicating entity", originalEntity)
-
-    let entityType = this.partRegistry.partTypes[ originalEntity.typeUid ]
-    let dupe       = this.partRegistry.createTypeInstance( entityType )
-
-    //FIXME: do this correctly
-    let doNotCopy = ["iuid","name"]
-    let onlyCopy = ["pos","rot","sca","color"]
-
-    for(let key in originalEntity ){
-      if( onlyCopy.indexOf( key ) > -1 ){
-        dupe[key] = JSON.parse(JSON.stringify(originalEntity[key])) //Object.assign([], originalEntity[key] )
-      }
-    }
-    //FIXME : needs to work with all entity types
-    //dupe.typeName + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1)
-    dupe.name = originalEntity.name + "" + ( this.partRegistry.partTypeInstances[ dupe.typeUid ].length - 1)
-    
-    return dupe
-  }
-  
   /* removes an entity 
   WARNING: this is not the same as deleting one*/
   removeEntity( entity, cull=false ){
@@ -317,8 +295,6 @@ class Kernel{
 
   saveBom( bom ){
     log.info("saving bom state")
-    let bom = this.bom.bom
-
     if(bom) return this.dataApi.saveBom(bom)
   }
 
