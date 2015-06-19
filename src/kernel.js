@@ -367,12 +367,22 @@ class Kernel{
         design.licenses = convertToArray(design,"licenses")
         design.tags     = convertToArray(design,"tags")
 
-        //we need this combo {uri, typeUid, mesh}
-        //uris need to be sent
+        //FIXME !! temporary workaround for mismatch in field names
         bom = bom
           .map(function(entry){
             entry.name = entry.title;
             return entry})
+        //FIXME: same here ! 
+        annotations = annotations
+          .map(function(entry){
+            entry.typeUid = entry.type_uid
+            return entry
+          })
+
+
+        //we need this combo {uri, typeUid, mesh}
+        //uris need to be sent
+      
 
         //typeUids
         //these are all the types (uids) used in current design
