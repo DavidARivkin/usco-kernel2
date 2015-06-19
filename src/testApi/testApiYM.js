@@ -360,8 +360,8 @@ class TestApiYM{
   }
 
   //this actually just returns the url of a file on jam/YM, yup another hack
-  __loadFileUrl(path){
-    log.info("Loading file from", path)
+  __getFileRealPath(path){
+    log.info("Geting real path of", path)
 
     let cleanedFileName = normalizeString(path)
     let fileUri = `${this.rootUri}/documents/${cleanedFileName}`
