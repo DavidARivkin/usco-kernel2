@@ -30,80 +30,10 @@ import helpers         from 'glView-helpers'
 let centerMesh         = helpers.mesthTools.centerMesh;
 
 
-function registerMeshAsTypeTemplate(mesh){
-  //add mesh as template for its type
-  log.info("setting ",mesh,"as template of ",typeUid)
-  this.partRegistry.addTemplateMeshForPartType( mesh.clone(), typeUid )
-  return mesh
-}
-
-function loadMeshAndRegisterItAsTemplate(uriOrData, typeUid, self, parentUri, storeName){
-      
-  let meshLoadParams= {
-    parentUri,
-    keepRawData:true, 
-    parsing:{useWorker:true,useBuffers:true} 
-  }
-
-  //FIXME: big hACK!!
-  if(storeName === "YM"){
-   
-   return self.dataApi.__loadFileUrl(uriOrData)
-    .map(function(uriOrData){
-      let resource = self.assetManager.load( uriOrData, meshLoadParams )
-      //return fromPromise(resource.deferred.promise)
-      return resource.deferred.promise
-    })
-    .flatMap(fromPromise)
-    .pluck('data')
-    .map(postProcessMesh)
-    .map(centerMesh)
-    .map(registerMeshAsTypeTemplate.bind(self))
-    .take(1)
-
-  }else{
-    uriOrData = "./"+uriOrData
-    let resource = self.assetManager.load( uriOrData, meshLoadParams )
-    var $mesh = fromPromise(resource.deferred.promise)
-
-    return $mesh
-    .pluck('data')
-    .map(postProcessMesh)
-    .map(centerMesh)
-    .map(registerMeshAsTypeTemplate)
-    .take(1)
-  }
-}
-
- function hackInjectPartType (typeUid, index, partRegistry, bom, bomEntry){
-  //FIXME:hack
-  let partKlass = {typeUid:typeUid}
-  let typeName  = "foo"+index
-  partKlass.prototype = {typeName:typeName,typeUid:typeUid}
-  
-  let klass = partRegistry.makeNamedPartKlass( typeName, typeUid )
-  partRegistry.registerPartType( klass, typeName, typeUid )
-  bom.registerPartType( klass )
-  bom.registerImplementation2(typeUid,{},"default",bomEntry.implementations.default)
-   //self.registerPartType(undefined, undefined, undefined, {name:bomEntry.title});
-  //part=undefined, source=undefined, mesh=undefined
-  //null, null, shape, {name:resource.name, resource:resource}
-}
-
-
 class Kernel{
-  constructor(stateIn={}){
-    //stateIn is just a hack for now
-    this.stateIn = stateIn
-
-  
+  constructor(){
+    
     this.partRegistry = new PartRegistry()
-    
-    //not sure at ALL
-    this.activeDesign = new Design()
-    
-    //essential
-    this.activeAssembly = this.activeDesign.activeAssembly
     
     //this should be PER assembly
     this.entitiesToMeshInstancesMap = new WeakMap()
@@ -115,8 +45,6 @@ class Kernel{
     //not sure
     this.dataApi = new TestApi()
     
-    //not sure
-    this.assetManager = undefined
   }
 
   setDesignAsPersistent(flag,rootUri){
@@ -146,51 +74,6 @@ class Kernel{
       if(rootUri) this.dataApi.rootUri = rootUri
     }
   }
-
-  testStuff(){
-    let apiPath = "https://jamapi.youmagine.com/api/v1/designs/k61g98eJ"
-
-    let store = this.dataApi.store
-    this.dataApi = new (require("./testApi/testApiYM"))
-    this.dataApi.store = store
-    this.dataApi.rootUri = apiPath
-    let assembly = {
-      "name": " bar",
-      "pos": [],
-      "rot": [],
-      "sca": [],
-      "children": [
-       { "name": " child1",
-         "pos": [0,0,0],
-         "rot": [0,0,0],
-         "sca": [0,0,0]}
-      ],
-    }
-    this.dataApi.saveAssemblyState(assembly)
-  }
-  
-  registerPartType( part=undefined, source=undefined, mesh=undefined, options={} ){
-    let {partKlass,typeUid} = this.partRegistry.registerPartTypeMesh( part, mesh, options )
-
-    this.bom.registerPartType( partKlass )
-
-    //if we have meshes or sources
-    if( "resource" in options ){
-      let resource = options.resource
-      //console.log("resource", resource, resource._file);
-      
-      //saving mapping of meshNameToTypeUid
-      this.dataApi.saveMeshNameToPartTypeUId(this.partRegistry._meshNameToPartTypeUId)
-      //we have a mesh with a resource, store the file
-      this.dataApi.saveFile( resource.name, resource._file )
-      //the bom stores the mapping of typeuid to mesh name/path
-      this.bom.registerImplementation2(typeUid,{},"default",resource.name)
-    }
-    //save part types??
-    //this.dataApi.saveCustomEntityTypes( this.partRegistry._customPartTypesMeta )
-    
-    return {partKlass,typeUid}
-  }
   
   /*
     get new instance of mesh for an entity that does not have a mesh YET
@@ -207,20 +90,7 @@ class Kernel{
     }
     return mesh
   }
-  
-  makePartTypeInstance( partType ){
-    return this.partRegistry.createTypeInstance( partType );
-  }
-  
-  registerPartInstance( partInst ){
-    this.activeAssembly.add( partInst );
-    //register new instance in the Bill of materials
-    this.bom.registerInstance( partInst, {} );
     
-    //persist changes
-    //this.saveAssemblyState();
-  }  
-  
   /* register the mesh <-> entity  relationship
   ie : what is visual/mesh for a given mesh and vice versa:
   ie : what is the entity of a given mesh
@@ -231,20 +101,7 @@ class Kernel{
      this.entitiesToMeshInstancesMap.set( entity, mesh );
      this.meshInstancesToEntitiesMap.set( mesh, entity );
   }
-  
-  /* removes an entity 
-  WARNING: this is not the same as deleting one*/
-  removeEntity( entity, cull=false ){
-    this.activeAssembly.remove( entity );
-    this.bom.unRegisterInstance( entity );
-        
-    //remove entry not sure about this
-    //this actually needs to be done on the visual side of things, not in the pure data layer
-    /*let mesh = this.getMeshOfEntity( entity );
-    this.entitiesToMeshInstancesMap.delete( entity );
-    this.meshInstancesToEntitiesMap.delete( mesh );*/
-  } 
-  
+    
   /* set the visual representation of an entity (3d)
   
     @param templateParams: how the visual gets adapted to the entity
@@ -308,16 +165,6 @@ class Kernel{
     log.info("loading design")
     let deferred = Q.defer()
     let self     = this
-
-    function logNext( next ){
-      log.info( next )
-    }
-    function logError( err){
-      log.error(err)
-    }
-    function logDone( data) {
-      log.info("DONE",data)
-    }
 
     //determine the "fs/store/api to use"
     let {storeName,undefined} = parseFileUri(uri, function YMFSMatcher(storeName,uri,fileName){
@@ -383,11 +230,8 @@ class Kernel{
             return entry
           })
 
-
         //we need this combo {uri, typeUid, mesh}
         //uris need to be sent
-      
-
         //typeUids
         //these are all the types (uids) used in current design
         let neededTypeUids =getNeededTypeIds(assemblies)
@@ -399,7 +243,6 @@ class Kernel{
             let binUri = bomEntry.implementations.default
             //TODO : use method 
             //binUri=parentUri+"/documents/"+binUri
-            
             return {uri:binUri, typeUid}
           }
           return undefined
@@ -430,7 +273,5 @@ class Kernel{
 
 }
 
-//export { Kernel }
-module.exports = Kernel;
-//FIXME: hack, for now
-window.UscoKernel = Kernel;
+module.exports = Kernel
+

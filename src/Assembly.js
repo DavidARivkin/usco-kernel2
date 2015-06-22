@@ -1,3 +1,22 @@
+/*
+
+  //helpers
+  // is the given entity part of the active assembly?
+  isEntityinActiveAssembly( entity ){
+    return this.activeAssembly.isNodePresent( entity );
+  }
+  
+  // retrieve the visual/mesh of a given entity 
+  getMeshOfEntity( entity ){
+    if( !entity || ! this.entitiesToMeshInstancesMap.has( entity ) ) return undefined;
+    return this.entitiesToMeshInstancesMap.get( entity );
+  }
+  
+  // retrieve the entity of a given mesh 
+  getEntityOfMesh( mesh ){
+    return this.meshInstancesToEntitiesMap.get( mesh );
+  }
+*/
 
 class ANode{
   constructor(){
