@@ -324,13 +324,17 @@ class Kernel{
       if(storeName === "xhr" && uri.indexOf("jamapi.youmagine.com") > -1 ) return "YM"
       return storeName
     })
+
+    console.log("storeName",storeName)
+
     if(storeName === "YM") {
       let store = this.dataApi.store
       this.dataApi = new (require("./testApi/testApiYM"))
       this.dataApi.store = store
     }
+    let dataApi = this.dataApi
 
-    let designData$ = this.dataApi.loadFullDesign(uri,options)
+    let designData$ = dataApi.loadFullDesign(uri,options)
 
     designData$ = designData$
       .take(1)
@@ -409,7 +413,7 @@ class Kernel{
 
         meshSources$ = meshSources$
           .flatMap(function(data){
-            return self.dataApi.__getFileRealPath(data.uri)
+            return dataApi.__getFileRealPath(data.uri)
               .catch(Rx.Observable.just(undefined)) //not perfect ,but this way we handle errors
           })
           .zip(meshSources$, function(realUri, entry){
@@ -421,48 +425,6 @@ class Kernel{
 
         return {design, bom, assemblies, annotations, meshSources$}
       })
-
-    
-  
-    designData$ = designData$.map(function(data)
-    {      
-      //get the list of typeUids
-      let neededTypeUids =getNeededTypeIds(self.activeDesign.activeAssembly)
-    
-      //now fetch the uris of the corresponding bom entry implems
-      let combos = {}
-      let registrations = []
-
-      let index = 0
-      bom.map(function(bomEntry){
-        let typeUid = bomEntry.id
-
-        if(neededTypeUids.has(typeUid)){
-          let binUri = bomEntry.implementations.default
-          combos[typeUid] = binUri
-          //DO THE LOADINNG!!
-          registrations.push( loadMeshAndRegisterItAsTemplate( binUri, typeUid, self, uri, storeName ) )
-        }
-
-        //note, index is even more useless than the rest
-        hackInjectPartType(typeUid, index, self.partRegistry, self.bom, bomEntry)
-      })
-
-      //FIXME: ugh, why do we need to re-iterate?
-      self.activeDesign.activeAssembly.children.map(function(child){
-        try{
-        self.bom.registerInstance( child, {} )
-        }catch(error){}
-      })
-
-      return registrations
-    })
-    .shareReplay(1)
-
-    //deal with loading stuff
-    designData$
-      .flatMap(Rx.Observable.from)
-      .mergeAll()
   }
 
 
