@@ -1,6 +1,5 @@
 import Part from "./Part"
 import PartRegistry from "./PartRegistry"
-import Bom from "./bom/Bom"
 import Assembly from "./Assembly"
 import Design from "./design/Design"
 
@@ -9,7 +8,6 @@ import TestApi from "./testApi/testApi"
 import { generateUUID, hashCode, nameCleanup } from "./utils"
 
 import co from "co"
-import Q from 'q'
 
 import Rx from 'rx'
 let Observable= Rx.Observable;
@@ -38,9 +36,6 @@ class Kernel{
     //this should be PER assembly
     this.entitiesToMeshInstancesMap = new WeakMap()
     this.meshInstancesToEntitiesMap = new WeakMap()//reverse map
-    
-    //not sure
-    this.bom = new Bom()
     
     //not sure
     this.dataApi = new TestApi()
@@ -133,7 +128,6 @@ class Kernel{
   /*resets everything to empty*/
   clearAll(){
     this.partRegistry.clear()
-    this.bom.clear()
   }
   
   //////////////////////////////
@@ -163,7 +157,6 @@ class Kernel{
   /*load a design from the given uri*/
   loadDesign( uri, options ){
     log.info("loading design")
-    let deferred = Q.defer()
     let self     = this
 
     //determine the "fs/store/api to use"
