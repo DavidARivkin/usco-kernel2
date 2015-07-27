@@ -18,7 +18,7 @@ class Part extends Entity{
       bbox:{min:[0,0,0],max:[0,0,0]}
     }
     //this.DEFAULTS = DEFAULTS;
-    let options = Object.assign({}, DEFAULTS, options); 
+    options = Object.assign({}, DEFAULTS, options); 
     super( options );
     
     Object.assign( this, options );

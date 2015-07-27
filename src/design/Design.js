@@ -18,7 +18,7 @@ class Design{
       meta:{state:"design"}
     };
     this.DEFAULTS = DEFAULTS;
-    let options = Object.assign({}, DEFAULTS, options); 
+    options = Object.assign({}, DEFAULTS, options); 
     Object.assign( this, options );
     
     //setup internals

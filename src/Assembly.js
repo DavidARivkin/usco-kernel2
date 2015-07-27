@@ -59,7 +59,7 @@ class Assembly extends ANode{
     
     }
     super();
-    let options = Object.assign({}, DEFAULTS, options); 
+    options = Object.assign({}, DEFAULTS, options); 
     Object.assign( this, options );
   }
   

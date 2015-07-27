@@ -11,7 +11,7 @@ import {normalizeString} from '../utils'
 
 
 function jsonToFormData(jsonData){
-  let jsonData = JSON.parse( JSON.stringify( jsonData ) );
+  jsonData = JSON.parse( JSON.stringify( jsonData ) );
   let formData = new FormData();
   for(let fieldName in jsonData){
     let value = jsonData[fieldName];

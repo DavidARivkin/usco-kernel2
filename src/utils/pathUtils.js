@@ -28,7 +28,6 @@ export function parseFileUri(uri, storeNameMatcher) {
 
 export function toAbsoluteUri(fileName, parentUri, store) {
   var fullPath, isXHr, rootUri, segments;
-  path = require('path');
   segments = fileName.split("/");
   if (segments[0] !== '.' && segments[0] !== '..') {
     return fileName;
